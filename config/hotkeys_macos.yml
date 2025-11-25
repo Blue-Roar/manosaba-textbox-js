@@ -1,4 +1,4 @@
-# 热键配置文件
+# 热键配置文件 (仅限macOS需要)
 hotkeys:
   # 角色切换 (Ctrl+数字键)
   character_switch:
