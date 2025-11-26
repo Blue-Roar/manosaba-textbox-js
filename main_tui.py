@@ -1,25 +1,28 @@
 """ Textual UI 版本"""
 import random
 import time
+import psutil
 from pynput.keyboard import Key, Controller, GlobalHotKeys
 import pyperclip
 import io
 from PIL import Image
 import pyclip
 from sys import platform
-from rich import print
 import os
 import yaml
 import tempfile
 import subprocess
 import threading
-from text_fit_draw import draw_text_auto
-from image_fit_paste import paste_image_auto
+
+from rich import print
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
-from textual.widgets import Header, Footer, RadioSet, RadioButton, Label, ProgressBar, Switch, Static
+from textual.widgets import Header, Footer, RadioSet, RadioButton, Label, ProgressBar, Switch
 from textual.binding import Binding
 from textual.reactive import reactive
+
+from text_fit_draw import draw_text_auto
+from image_fit_paste import paste_image_auto
 
 PLATFORM = platform.lower()
 
@@ -27,6 +30,8 @@ if PLATFORM.startswith('win'):
     try:
         import win32clipboard
         import keyboard
+        import win32gui
+        import win32process
     except ImportError:
         print("[red]请先安装 Windows 运行库: pip install pywin32 keyboard[/red]")
         raise
@@ -34,6 +39,7 @@ if PLATFORM.startswith('win'):
 
 class ManosabaTextBox:
     """主逻辑类"""
+
     def __init__(self):
         # 常量定义
         self.BOX_RECT = ((728, 355), (2339, 800))  # 文本框区域坐标
@@ -54,13 +60,14 @@ class ManosabaTextBox:
         self.mahoshojo = {}  # 角色元数据
         self.text_configs_dict = {}  # 文本配置字典
         self.character_list = []  # 角色列表
-        self.keymap = {}    # 快捷键映射
+        self.keymap = {}  # 快捷键映射
+        self.process_whitelist = []  # 进程白名单
         self.load_configs()
 
         # 状态变量
-        self.emote = None   # 表情索引
-        self.value_1 = -1   # 我也不知道这是啥我也不敢动
-        self.current_character_index = 3    # 当前角色索引，默认第三个角色（sherri）
+        self.emote = None  # 表情索引
+        self.value_1 = -1  # 我也不知道这是啥我也不敢动
+        self.current_character_index = 3  # 当前角色索引，默认第三个角色（sherri）
 
     def setup_paths(self):
         """设置文件路径"""
@@ -84,6 +91,10 @@ class ManosabaTextBox:
         with open(os.path.join(self.CONFIG_PATH, "keymap.yml"), 'r', encoding="utf-8") as fp:
             config = yaml.safe_load(fp)
             self.keymap = config.get(PLATFORM, {})
+
+        with open(os.path.join(self.CONFIG_PATH, "process_whitelist.yml"), 'r', encoding="utf-8") as fp:
+            config = yaml.safe_load(fp)
+            self.process_whitelist = config.get(PLATFORM, [])
 
     def get_character(self, index: str | None = None, full_name: bool = False) -> str:
         """
@@ -245,7 +256,7 @@ class ManosabaTextBox:
 
     def try_get_image(self) -> Image.Image | None:
         """尝试从剪贴板获取图像"""
-        if PLATFORM=='darwin':
+        if PLATFORM == 'darwin':
             try:
                 data = pyclip.paste()
 
@@ -276,7 +287,8 @@ class ManosabaTextBox:
                         bmp_data = data
                         # DIB 格式缺少 BMP 文件头，需要手动加上
                         # BMP 文件头是 14 字节，包含 "BM" 标识和文件大小信息
-                        header = b'BM' + (len(bmp_data) + 14).to_bytes(4, 'little') + b'\x00\x00\x00\x00\x36\x00\x00\x00'
+                        header = b'BM' + (len(bmp_data) + 14).to_bytes(4,
+                                                                       'little') + b'\x00\x00\x00\x00\x36\x00\x00\x00'
                         image = Image.open(io.BytesIO(header + bmp_data))
                         return image
             except Exception as e:
@@ -287,9 +299,50 @@ class ManosabaTextBox:
                 except:
                     pass
             return None
+        else:
+            # todo: Linux 支持
+            return None
+
+    def _active_process_allowed(self) -> bool:
+        """校验当前前台进程是否在白名单"""
+        if not self.process_whitelist:
+            return True
+
+        wl = {name.lower() for name in self.process_whitelist}
+
+        if PLATFORM.startswith('win'):
+            try:
+                hwnd = win32gui.GetForegroundWindow()
+                if not hwnd:
+                    return False
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                name = psutil.Process(pid).name().lower()
+                return name in wl
+            except (psutil.Error, OSError):
+                return False
+
+        elif PLATFORM == 'darwin':
+            try:
+                result = subprocess.run(
+                    ["osascript", "-e",
+                     'tell application "System Events" to get name of first process whose frontmost is true'],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                name = result.stdout.strip().lower()
+                return name in wl
+            except subprocess.SubprocessError:
+                return False
+
+        else:
+            # todo: Linux 支持
+            return True
 
     def start(self) -> str:
         """生成并发送图片，返回状态消息"""
+        if not self._active_process_allowed():
+            return "前台应用不在白名单内"
         character_name = self.get_character()
         address = os.path.join(self.CACHE_PATH, self.get_random_value() + ".jpg")
         baseimage_file = address
@@ -367,13 +420,12 @@ class ManosabaTUI(App):
     """魔裁文本框生成器 TUI"""
 
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "textual.tcss"),
-              'r',encoding="utf-8") as f:
+              'r', encoding="utf-8") as f:
         CSS = f.read()
 
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config", "keymap.yml"),
-        'r',encoding="utf-8") as f:
+              'r', encoding="utf-8") as f:
         keymap = yaml.safe_load(f).get(PLATFORM, {})
-
 
     TITLE = "魔裁 文本框生成器"
     theme = "tokyo-night"
@@ -409,8 +461,6 @@ class ManosabaTUI(App):
             self.hotkey_listener.start()
         elif PLATFORM.startswith('win'):
             keyboard.add_hotkey(keymap['start_generate'], self.trigger_generate)
-
-
 
     def trigger_generate(self) -> None:
         """全局热键触发生成图片（在后台线程中调用）"""
@@ -515,7 +565,7 @@ class ManosabaTUI(App):
             self.textbox.AUTO_PASTE_IMAGE = event.value
             self.update_status("自动粘贴已" + ("启用" if event.value else "禁用"))
             auto_send_switch = self.query_one("#auto_send_switch", Switch)
-            if event.value==False:
+            if event.value == False:
                 self.textbox.AUTO_SEND_IMAGE = False
                 auto_send_switch.value = False
                 auto_send_switch.disabled = True
@@ -616,7 +666,6 @@ class ManosabaTUI(App):
         self.update_status(f"应用已{status}。")
         main_container = self.query_one("#main_container")
         main_container.disabled = not self.active
-
 
     def action_generate(self) -> None:
         """生成图片"""
