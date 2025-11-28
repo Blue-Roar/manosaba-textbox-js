@@ -7,6 +7,7 @@ import os
 Align = Literal["left", "center", "right"]
 VAlign = Literal["top", "middle", "bottom"]
 
+
 def paste_image_auto(
     image_source: Union[str, Image.Image],
     top_left: Tuple[int, int],
@@ -34,16 +35,20 @@ def paste_image_auto(
         img = image_source.copy()
     else:
         img = Image.open(image_source).convert("RGBA")
-    
+
     # 创建绘图对象
     draw = ImageDraw.Draw(img)
-    
+
     # 处理覆盖图层
     if image_overlay is not None:
         if isinstance(image_overlay, Image.Image):
             img_overlay = image_overlay.copy()
         else:
-            img_overlay = Image.open(image_overlay).convert("RGBA") if os.path.isfile(image_overlay) else None
+            img_overlay = (
+                Image.open(image_overlay).convert("RGBA")
+                if os.path.isfile(image_overlay)
+                else None
+            )
 
     x1, y1 = top_left
     x2, y2 = bottom_right
@@ -65,7 +70,7 @@ def paste_image_auto(
 
     if not allow_upscale:
         scale = min(1.0, scale)
-    
+
     # 应用最大图片尺寸限制
     max_width, max_height = max_image_size
     if max_width is not None:
@@ -109,26 +114,28 @@ def paste_image_auto(
         img.paste(img_overlay, (offset_x, offset_y), img_overlay)
     elif image_overlay is not None and img_overlay is None:
         print("Warning: overlay image is not exist.")
-    
+
     # 自动在图片上写角色专属文字
     if text_configs_dict and role_name in text_configs_dict:
         shadow_offset = (2, 2)
         shadow_color = (0, 0, 0)
-        
+
         for config in text_configs_dict[role_name]:
             text = config["text"]
             position = tuple(config["position"])
             font_color = tuple(config["font_color"])
             font_size = config["font_size"]
-        
+
             if base_path:
-                font_dir = os.path.join(base_path, 'assets', 'fonts')
+                font_dir = os.path.join(base_path, "assets", "fonts")
             else:
-                font_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'fonts')
-            
+                font_dir = os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)), "assets", "fonts"
+                )
+
             font_files = ["font3.ttf", "arial.ttf", "DejaVuSans.ttf"]
             font = None
-            
+
             for font_file in font_files:
                 font_path = os.path.join(font_dir, font_file)
                 if os.path.exists(font_path):
@@ -138,18 +145,21 @@ def paste_image_auto(
                     except Exception as e:
                         print(f"加载字体 {font_path} 失败: {e}")
                         continue
-            
+
             if font is None:
                 try:
                     font = ImageFont.load_default()
                 except:
                     print("无法加载任何字体，跳过文字绘制")
                     continue
-            
+
             # 绘制阴影文字
-            shadow_position = (position[0] + shadow_offset[0], position[1] + shadow_offset[1])
+            shadow_position = (
+                position[0] + shadow_offset[0],
+                position[1] + shadow_offset[1],
+            )
             draw.text(shadow_position, text, fill=shadow_color, font=font)
-            
+
             # 绘制主文字
             draw.text(position, text, fill=font_color, font=font)
 
