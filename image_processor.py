@@ -47,17 +47,17 @@ class ImageProcessor:
         # 应用像素减少压缩
         if compression_settings.get("pixel_reduction_enabled", False):
             reduction_ratio = compression_settings.get("pixel_reduction_ratio", 50) / 100.0
-            print(f"应用像素减少压缩，比例: {reduction_ratio}")  # 调试信息
+            # print(f"应用像素减少压缩，比例: {reduction_ratio}")  # 调试信息
             
             if reduction_ratio > 0 and reduction_ratio < 1:
                 new_width = int(image.width * (1 - reduction_ratio))
                 new_height = int(image.height * (1 - reduction_ratio))
                 
                 # 确保最小尺寸
-                new_width = max(new_width, 100)
+                new_width = max(new_width, 300) #保持大致比例
                 new_height = max(new_height, 100)
                 
-                print(f"原始尺寸: {image.width}x{image.height}, 压缩后: {new_width}x{new_height}")  # 调试信息
+                # print(f"原始尺寸: {image.width}x{image.height}, 压缩后: {new_width}x{new_height}")  # 调试信息
                 
                 # 使用高质量下采样
                 compressed_image = compressed_image.resize(

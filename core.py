@@ -296,9 +296,7 @@ class ManosabaCore:
                 font_size,
                 compression_settings  # 传递压缩设置
             )
-            # 添加文件大小信息
-            # file_size_kb = len(png_bytes) / 1024
-            # print(f"生成的图片大小: {file_size_kb:.2f} KB")
+
         except Exception as e:
             return f"生成图像失败: {e}"
 
