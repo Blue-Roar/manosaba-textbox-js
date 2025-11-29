@@ -1,18 +1,3 @@
-# 流程
-# 1 搞蒙版
-# 2 截头像
-# 3 叠头像
-# 4 嵌字
-# 5 改分辨率
-#1 优化算法 尽量不出现两个重复表情在一块
-#2 优化代码 md0.2s的时间太长了
-#3 把原代码重做 他def的函数我看不懂 只能打印一次文本吗我靠
-#4 增加多种表情包选择
-#5 把选择的地方做的更明显一些
-#6 加阴影
-#7 新增：快捷键切换角色功能
-#8 新增：限制生成图片大小功能
-
 print("""角色说明:
 1为樱羽艾玛，2为二阶堂希罗，3为橘雪莉，4为远野汉娜
 5为夏目安安，6为月代雪，7为冰上梅露露，8为城崎诺亚，9为莲见蕾雅，10为佐伯米莉亚
@@ -21,19 +6,19 @@ print("""角色说明:
 快捷键说明:
 Ctrl+1 到 Ctrl+9: 切换角色1-9
 Ctrl+q: 切换角色10
-Ctrl+w: 切换角色11
-Ctrl+e: 切换角色12
-Ctrl+r: 切换角色13
-Ctrl+t: 切换角色14
+Ctrl+e: 切换角色11
+Ctrl+r: 切换角色12
+Ctrl+t: 切换角色13
+Ctrl+y: 切换角色14
 Ctrl+0: 显示当前角色
 Alt+1-9: 切换表情1-9(部分角色表情较少 望大家谅解)
 Enter: 生成图片
-Esc: 退出程序
+Ctrl+Esc: 退出程序
 Ctrl+Tab: 清除图片
       
 程序说明：
 这个版本的程序占用体积较小，但是需要预加载，初次更换角色后需要等待数秒才能正常使用，望周知（
-按Tab可清除生成图片，降低占用空间，但清除图片后需重启才能正常使用
+按Ctrl+Tab可清除生成图片，降低占用空间，但清除图片后需重启才能正常使用
 感谢各位的支持
 
 
@@ -65,10 +50,10 @@ import time
 import keyboard
 import pyperclip
 import io
-from PIL import Image
+from PIL import Image,ImageDraw,ImageFont
 import win32clipboard
 import os
-import yaml
+import shutil
 
 from text_fit_draw import draw_text_auto
 from image_fit_paste import paste_image_auto
@@ -77,30 +62,130 @@ i = -1
 value_1 = -1
 expression = None
 
+# 角色配置字典
+mahoshojo = {
+    "ema": {"emotion_count": 8, "font": "font3.ttf"},     # 樱羽艾玛
+    "hiro": {"emotion_count": 6, "font": "font3.ttf"},    # 二阶堂希罗
+    "sherri": {"emotion_count": 7, "font": "font3.ttf"},  # 橘雪莉
+    "hanna": {"emotion_count": 5, "font": "font3.ttf"},   # 远野汉娜
+    "anan": {"emotion_count": 9, "font": "font3.ttf"},    # 夏目安安
+    "yuki" : {"emotion_count": 18, "font": "font3.ttf"},
+    "meruru": {"emotion_count": 6, "font": "font3.ttf"},   # 冰上梅露露
+    "noa": {"emotion_count": 6, "font": "font3.ttf"},     # 城崎诺亚
+    "reia": {"emotion_count": 7, "font": "font3.ttf"},    # 莲见蕾雅
+    "miria": {"emotion_count": 4, "font": "font3.ttf"},   # 佐伯米莉亚
+    "nanoka": {"emotion_count": 5, "font": "font3.ttf"},  # 黑部奈叶香
+    "mago": {"emotion_count": 5, "font": "font3.ttf"},   # 宝生玛格
+    "alisa": {"emotion_count": 6, "font": "font3.ttf"},   # 紫藤亚里沙
+    "coco": {"emotion_count": 5, "font": "font3.ttf"}
+}
+# 角色文字配置字典 - 每个角色对应4个文字配置
+text_configs_dict = {
+    "nanoka": [  # 黑部奈叶香
+        {"text":"黑","position":(759,63),"font_color":(131,143,147),"font_size":196},
+        {"text":"部","position":(955,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"奈","position":(1053,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"叶香","position":(1197,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "hiro": [  # 二阶堂希罗
+        {"text":"二","position":(759,63),"font_color":(239,79,84),"font_size":196},
+        {"text":"阶堂","position":(955,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"希","position":(1143,110),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"罗","position":(1283,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "ema": [  # 樱羽艾玛
+        {"text":"樱","position":(759,73),"font_color":(253,145,175),"font_size":186},
+        {"text":"羽","position":(949,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"艾","position":(1039,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"玛","position":(1183,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "sherri": [  # 橘雪莉
+        {"text":"橘","position":(759,73),"font_color":(137,177,251),"font_size":186},
+        {"text":"雪","position":(943,110),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"莉","position":(1093,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"","position":(0,0),"font_color":(255, 255, 255),"font_size":1}  # 占位符
+    ],
+    "anan": [  # 夏目安安
+        {"text":"夏","position":(759,73),"font_color":(159,145,251),"font_size":186},
+        {"text":"目","position":(949,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"安","position":(1039,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"安","position":(1183,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "noa": [  # 城崎诺亚
+        {"text":"城","position":(759,73),"font_color":(104,223,231),"font_size":186},
+        {"text":"崎","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"诺","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"亚","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "coco": [  # 泽渡可可
+        {"text":"泽","position":(759,73),"font_color":(251,114,78),"font_size":186},
+        {"text":"渡","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"可","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"可","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "alisa": [  # 紫藤亚里沙
+        {"text":"紫","position":(759,73),"font_color":(235,75,60),"font_size":186},
+        {"text":"藤","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"亚","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"里沙","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "reia": [  # 莲见蕾雅
+        {"text":"莲","position":(759,73),"font_color":(253,177,88),"font_size":186},
+        {"text":"见","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"蕾","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"雅","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "mago": [  # 宝生玛格
+        {"text":"宝","position":(759,73),"font_color":(185,124,235),"font_size":186},
+        {"text":"生","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"玛","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"格","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "hanna": [  # 远野汉娜
+        {"text":"远","position":(759,73),"font_color":(169,199,30),"font_size":186},
+        {"text":"野","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"汉","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"娜","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "meruru": [  # 冰上梅露露
+        {"text":"冰","position":(759,73),"font_color":(227,185,175),"font_size":186},
+        {"text":"上","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"梅","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"露露","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}
+    ],
+    "miria": [  # 佐伯米莉亚
+        {"text":"佐","position":(759,73),"font_color":(235,207,139),"font_size":186},
+        {"text":"伯","position":(945,175),"font_color":(255, 255, 255),"font_size":92},
+        {"text":"米","position":(1042,117),"font_color":(255, 255, 255),"font_size":147},
+        {"text":"莉亚","position":(1186,175),"font_color":(255, 255, 255),"font_size":92}   
+    ],
+    "yuki": [  #月代雪
+    {"text":"月","position":(759,63),"font_color":(177,175,195),"font_size":196},
+    {"text":"代","position":(948,175),"font_color":(255, 255, 255),"font_size":92},
+    {"text":"雪","position":(1053,117),"font_color":(255, 255, 255),"font_size":147} ,   
+    {"text":"","position":(0,0),"font_color":(255, 255, 255),"font_size":1}
+    ]
+}
 import getpass
 
 # 获取当前用户名
 username = getpass.getuser()
 
-# 构建用户文档路径
-if os.name == 'nt':  # Windows系统
-    user_documents = os.path.join('C:\\', 'Users', username, 'Documents')
-else:  # 其他系统
-    user_documents = os.path.expanduser('~/Documents')
+# 构建当前文件夹路径，并在其中创建"魔裁"文件夹
+current_dir = os.path.dirname(os.path.abspath(__file__))
+magic_cut_folder = os.path.join(current_dir, "魔裁")
 
-# 构建\"魔裁\"文件夹路径
-magic_cut_folder = os.path.join(user_documents, '魔裁')
+# 确保魔裁文件夹存在
+if not os.path.exists(magic_cut_folder):
+    os.makedirs(magic_cut_folder)
 
-# 创建\"魔裁\"文件夹（如果不存在）
-os.makedirs(magic_cut_folder, exist_ok=True)
+# 判断用户电脑系统
+import platform
+user_os = platform.system()
+os_version = platform.version()
+os_architecture = platform.architecture()[0]
 
 # 角色列表（按顺序对应1-13的角色）
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs.yml")
-with open(CONFIG_PATH, 'r', encoding="utf-8") as fp:
-    config = yaml.safe_load(fp)
-
-mahoshojo = config["mahoshojo"]
-text_configs_dict = config["text_configs"]
 character_list = list(mahoshojo.keys())
 
 # 获取当前角色信息
@@ -109,15 +194,24 @@ def get_current_character():
 
 def get_current_font():
     # 返回完整的字体文件绝对路径
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), mahoshojo[get_current_character()]["font"])
+    return os.path.join(current_dir,"assets","fonts",mahoshojo[get_current_character()]["font"])
 
 def get_current_emotion_count():
     return mahoshojo[get_current_character()]["emotion_count"]
 
-def delete(folder_path):
+def delate(folder_path=None, quality=85):
+    # 如果没有提供folder_path，则默认使用magic_cut_folder
+    if folder_path is None:
+        folder_path = magic_cut_folder
+    
+    # 确保文件夹存在
+    if not os.path.exists(folder_path):
+        print(f"文件夹不存在: {folder_path}")
+        return
+        
     for filename in os.listdir(folder_path):
         if filename.lower().endswith('.jpg'):
-            os.remove(folder_path+"\\"+filename)
+            os.remove(os.path.join(folder_path, filename))
          
 
 def generate_and_save_images(character_name):
@@ -133,8 +227,8 @@ def generate_and_save_images(character_name):
     for i in range(16):     
         for j in range(emotion_count):
                 # 使用绝对路径加载背景图片和角色图片
-            background_path = os.path.join(now_file, 'assets', "background", f"c{i+1}.png")
-            overlay_path = os.path.join(now_file, character_name, f"{character_name} ({j+1}).png")
+            background_path = os.path.join(now_file, "assets", "background", f"c{i+1}.png")
+            overlay_path = os.path.join(now_file,"assets", "chara", character_name, f"{character_name} ({j+1}).png")
                 
             background = Image.open(background_path).convert("RGBA")
             overlay = Image.open(overlay_path).convert("RGBA")
@@ -144,7 +238,7 @@ def generate_and_save_images(character_name):
             result.paste(overlay, (0, 134), overlay)
                 
                 # 使用绝对路径保存生成的图片
-            save_path = os.path.join(os.path.join(magic_cut_folder), f"{character_name} ({img_num}).jpg")
+            save_path = os.path.join(magic_cut_folder, f"{character_name} ({img_num}).jpg")
             result.convert("RGB").save(save_path)
     print("加载完成")
 
@@ -162,7 +256,6 @@ def switch_character(new_index):
         return True
     return False
 
-# 显示当前角色信息
 def show_current_character():
     character_name = get_current_character()
     print(f"当前角色: {character_name}")
@@ -228,11 +321,13 @@ HOTKEY= "enter"
 
 # 全选快捷键, 此按键并不会监听, 而是会作为模拟输入
 # 此值为字符串, 代表热键的键名, 格式同 HOTKEY
-SELECT_ALL_HOTKEY= "ctrl+a"
-
-# 剪切快捷键, 此按键并不会监听, 而是会作为模拟输入
-# 此值为字符串, 代表热键的键名, 格式同 HOTKEY
-CUT_HOTKEY= "ctrl+x"
+# 根据系统类型设置不同的热键
+if user_os == "Darwin":  # macOS系统
+    SELECT_ALL_HOTKEY= "command+a"
+    CUT_HOTKEY= "command+x"
+else:  # 其他系统（Windows、Linux等）
+    SELECT_ALL_HOTKEY= "ctrl+a"
+    CUT_HOTKEY= "ctrl+x"
 
 # 黏贴快捷键, 此按键并不会监听, 而是会作为模拟输入
 # 此值为字符串, 代表热键的键名, 格式同 HOTKEY
@@ -415,8 +510,8 @@ keyboard.add_hotkey('ctrl+q', lambda: switch_character(10))   # 角色10
 keyboard.add_hotkey('ctrl+e', lambda: switch_character(11))  # 角色11
 keyboard.add_hotkey('ctrl+r', lambda: switch_character(12))  # 角色12
 keyboard.add_hotkey('ctrl+t', lambda: switch_character(13))  # 角色13
-keyboard.add_hotkey('ctrl+y', lambda: switch_character(0)) 
-keyboard.add_hotkey('ctrl+Tab', lambda: delete(magic_cut_folder))
+keyboard.add_hotkey('ctrl+y', lambda: switch_character(14)) 
+keyboard.add_hotkey('ctrl+Tab', lambda: delate(magic_cut_folder))
 
 for i in range(1,10):
     keyboard.add_hotkey(f'alt+{i}', lambda idx=i: get_expression(idx))
