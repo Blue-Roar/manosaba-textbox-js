@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any
 import re
 
 import openai
-from config import ConfigLoader
+from config import CONFIGS
 
 
 class AIClientManager:
@@ -11,7 +11,6 @@ class AIClientManager:
     def __init__(self):
         self.clients = {}
         self.current_client = None
-        self.config_loader = ConfigLoader()
         
     def initialize_client(self, client_type: str, config: Dict[str, Any]) -> bool:
         """初始化AI客户端"""
@@ -40,50 +39,23 @@ class AIClientManager:
             print(f"连接测试失败: {e}")
             return False
     
-    def _load_config_from_file(self) -> Dict[str, Any]:
-        """从配置文件加载配置"""
-        config_path = get_resource_path(os.path.join("config", "settings.yml"))
-        try:
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = yaml.safe_load(f)
-                return config or {}
-        except Exception as e:
-            print(f"加载配置文件失败: {e}")
-            return {}
-    
-    def _save_config_to_file(self, config: Dict[str, Any]) -> bool:
-        """保存配置到文件"""
-        config_path = get_resource_path(os.path.join("config", "settings.yml"))
-        try:
-            with open(config_path, 'w', encoding='utf-8') as f:
-                yaml.dump(config, f, default_flow_style=False, allow_unicode=True, indent=2)
-            return True
-        except Exception as e:
-            print(f"保存配置文件失败: {e}")
-            return False
-    
-    def get_available_models(self) -> Dict[str, Dict[str, Any]]:
-        """获取可用模型配置"""
-        # 使用ConfigLoader获取模型配置
-        return self.config_loader.get_available_models()
-    
 class SentimentAnalyzer:
     def __init__(self):
         self.client_manager = AIClientManager()  # 使用客户端管理器
         self.is_initialized = False
-        self.emotion_list = ["无感情", "愤怒", "嫌弃", "疑惑", "惊讶", "伤心", "害羞", "开心", "恐惧", "无语", "大笑"]
+        self.emotion_list = ["平静", "喜悦", "喜爱", "惊讶", "困惑", "无语", "悲伤", "愤怒", "恐惧"]
         
         self.selected_emotion = None #用来在generate_image里显示选择的表情
 
         # 更严格的规则提示词
-        self.rule_prompt = """你是一个专门聊天文本的情感分析助手。你的任务是：分析用户输入文本的情感，并从以下11个选项中选择最匹配的一个：["无感情", "愤怒", "嫌弃", "疑惑", "惊讶", "伤心", "害羞", "开心", "恐惧", "无语", "大笑"]。
+        self.rule_prompt = f"""你是一个专门聊天文本的情感分析助手。你的任务是：分析用户输入文本的情感，并从以下选项中选择最匹配的一个：{self.emotion_list}。
 
 规则：
 1. 只返回情感词汇，不要添加其他内容
 2. 文本没有实际含义时，可能需要推测前后文来判断情感
-3. 无法判断时返回"无感情"
+3. 无法判断或无内容时返回"平静"
 
-请严格按照这个格式回复，现在请回复"好的"以确认你理解了规则。"""
+请开始分析随后的用户输入："""
         
     def initialize(self, client_type: str, config: Dict[str, Any]) -> bool:
         """
@@ -97,7 +69,7 @@ class SentimentAnalyzer:
                 # 发送规则提示词
                 response = self._send_request(self.rule_prompt)
                 # 直接检查回复，不需要单独的方法
-                confirmation_keywords = ['好的', '明白', '了解']
+                confirmation_keywords = ['平静','好的', '明白', '了解']
                 response_lower = response.lower()
                 self.is_initialized = any(keyword in response_lower for keyword in confirmation_keywords)
                 
@@ -126,7 +98,7 @@ class SentimentAnalyzer:
             ]
 
             # 获取模型配置
-            models = self.client_manager.get_available_models()
+            models = CONFIGS.get_available_models()
             current_client = self.client_manager.current_client
             model_name = models[current_client]["model"] if current_client in models else "deepseek-chat"
 

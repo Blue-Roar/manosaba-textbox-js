@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from path_utils import get_available_fonts
+from config import CONFIGS
 
 
 class SettingsWindow:
@@ -18,10 +19,10 @@ class SettingsWindow:
         self.gui = gui
 
         # 加载设置
-        self.settings = self.core.get_gui_settings()
+        self.settings = CONFIGS.gui_settings
 
         # 获取可用的AI模型配置
-        self.ai_models = self.core.get_ai_models()
+        self.ai_models = CONFIGS.get_available_models()
         
         # 确定当前平台
         self.platform = sys.platform
@@ -114,7 +115,7 @@ class SettingsWindow:
         )
         self.font_size_var = tk.IntVar(value=self.settings.get("font_size", 12))
         font_size_spin = ttk.Spinbox(
-            font_frame, textvariable=self.font_size_var, from_=8, to=72, width=10
+            font_frame, textvariable=self.font_size_var, from_=8, to=120, width=10
         )
         font_size_spin.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
         font_size_spin.bind("<KeyRelease>", self._on_setting_changed)
@@ -172,7 +173,7 @@ class SettingsWindow:
         bracket_color_frame.grid(row=4, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
         
         self.bracket_color_var = tk.StringVar(
-            value=self.settings.get("bracket_color", "#89B1FB")
+            value=self.settings.get("bracket_color", "#EF4F54")
         )
         bracket_color_entry = ttk.Entry(
             bracket_color_frame,
@@ -330,7 +331,7 @@ class SettingsWindow:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # 从配置文件重新加载快捷键
-        self.original_hotkeys = self.core.config_loader.load_config("keymap", platform=self.platform_key)
+        self.original_hotkeys = CONFIGS.load_config("keymap")
         hotkeys = self.original_hotkeys
         
         # 生成快捷键放在第一个
@@ -422,8 +423,8 @@ class SettingsWindow:
 
         # 获取所有角色选项
         character_options = [""]  # 空选项
-        for char_id in self.core.character_list:
-            full_name = self.core.get_character(char_id, full_name=True)
+        for char_id in CONFIGS.character_list:
+            full_name = CONFIGS.get_character(char_id, full_name=True)
             character_options.append(f"{full_name} ({char_id})")
 
         quick_chars = self.settings.get("quick_characters", {})
@@ -431,8 +432,8 @@ class SettingsWindow:
         for i in range(1, 7):
             # 获取当前设置的角色
             current_char = quick_chars.get(f"character_{i}", "")
-            if current_char and current_char in self.core.character_list:
-                current_display = f"{self.core.get_character(current_char, full_name=True)} ({current_char})"
+            if current_char and current_char in CONFIGS.character_list:
+                current_display = f"{CONFIGS.get_character(current_char, full_name=True)} ({current_char})"
             else:
                 current_display = ""
 
@@ -498,7 +499,7 @@ i - 1,
         self.whitelist_text.pack(fill=tk.BOTH, expand=True, pady=5)
 
         # 从配置文件重新加载白名单内容
-        current_whitelist = self.core.config_loader.load_config("process_whitelist")
+        current_whitelist = CONFIGS.load_config("process_whitelist")
         self.whitelist_text.insert('1.0', '\n'.join(current_whitelist))
 
     def _setup_model_parameters(self, event=None):
@@ -730,12 +731,12 @@ i - 1,
             if not self._save_hotkey_settings():
                 return False
             # 只在快捷键有更改时重新初始化热键管理器
-            self.core.reload_configs()
+            CONFIGS.reload_configs()
             self.gui.reinitialize_hotkeys()
             self.hotkeys_changed = False
 
         # 保存设置到文件
-        self.core.save_gui_settings(self.settings)
+        CONFIGS.save_gui_settings()
         # 保存进程白名单
         self._save_whitelist_settings()
 
@@ -757,13 +758,13 @@ i - 1,
         # 检查快捷键有效性
         for key_name, hotkey in new_hotkeys.items():
             if hotkey:  # 只检查非空的快捷键
-                is_valid, error_msg = self.core.config_loader.validate_hotkey_format(hotkey)
+                is_valid, error_msg = CONFIGS.validate_hotkey_format(hotkey)
                 if not is_valid:
                     messagebox.showerror("快捷键错误", error_msg)
                     return False
         
         # 使用config_loader保存
-        success = self.core.config_loader.save_keymap(self.platform_key, new_hotkeys)
+        success = CONFIGS.save_keymap(new_hotkeys)
         if success:
             # 更新原始快捷键以反映保存状态
             self.original_hotkeys = new_hotkeys
@@ -781,11 +782,11 @@ i - 1,
         processes = [p.strip() for p in text_content.split('\n') if p.strip()]
 
         # 使用config_loader保存白名单
-        success = self.core.config_loader.save_process_whitelist(processes)
+        success = CONFIGS.save_process_whitelist(processes)
 
         if success:
             # 更新core中的白名单
-            self.core.process_whitelist = processes
+            CONFIGS.process_whitelist = processes
             return True
         else:
             return False
