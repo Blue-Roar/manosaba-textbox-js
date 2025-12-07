@@ -33,6 +33,23 @@ text_configs:
       position: [1283, 175]
       font_color: [255, 255, 255]
       font_size: 92
+  CreatureHiro:
+    - text: 二
+      position: [759, 63]
+      font_color: [239, 79, 84]
+      font_size: 196
+    - text: 阶堂
+      position: [955, 175]
+      font_color: [255, 255, 255]
+      font_size: 92
+    - text: 希
+      position: [1143, 110]
+      font_color: [255, 255, 255]
+      font_size: 147
+    - text: 罗
+      position: [1283, 175]
+      font_color: [255, 255, 255]
+      font_size: 92
   ema:
     - text: 樱
       position: [759, 73]
@@ -50,7 +67,7 @@ text_configs:
       position: [1183, 175]
       font_color: [255, 255, 255]
       font_size: 92
-  sherri:
+  sherry:
     - text: 橘
       position: [759, 73]
       font_color: [137, 177, 251]

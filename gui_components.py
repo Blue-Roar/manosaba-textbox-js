@@ -17,43 +17,23 @@ class PreviewManager:
         
         # 预览相关变量
         self.preview_label = None
-        self.preview_info_var1 = None
-        self.preview_info_var2 = None
-        self.preview_info_var3 = None
+        self.preview_info = [None] * 3
 
     def setup_preview_frame(self, parent):
         """设置预览框架"""
         # 预览信息区域（放在图片上方，横向排列三个信息项）
         preview_info_frame = ttk.Frame(parent)
         preview_info_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
+        preview_info_label=[None] * 3
 
         # 创建三个标签用于显示预览信息，横向排列
-        self.preview_info_var1 = tk.StringVar(value="信息1")
-        self.preview_info_var2 = tk.StringVar(value="信息2")
-        self.preview_info_var3 = tk.StringVar(value="信息3")
+        for i in range(3):
+            self.preview_info[i] = tk.StringVar(value=f"信息{i+1}")
 
-        preview_info_label1 = ttk.Label(
-            preview_info_frame, textvariable=self.preview_info_var1
+            preview_info_label[i] = ttk.Label(
+            preview_info_frame, textvariable=self.preview_info[i]
         )
-        preview_info_label1.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-
-        # 添加分隔线
-        separator1 = ttk.Separator(preview_info_frame, orient=tk.VERTICAL)
-        separator1.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=2)
-
-        preview_info_label2 = ttk.Label(
-            preview_info_frame, textvariable=self.preview_info_var2
-        )
-        preview_info_label2.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
-
-        # 添加分隔线
-        separator2 = ttk.Separator(preview_info_frame, orient=tk.VERTICAL)
-        separator2.pack(side=tk.LEFT, fill=tk.Y, padx=5, pady=2)
-
-        preview_info_label3 = ttk.Label(
-            preview_info_frame, textvariable=self.preview_info_var3
-        )
-        preview_info_label3.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
+            preview_info_label[i].pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
 
         # 更新预览按钮 - 放在预览信息区域的右侧
         ttk.Button(
@@ -94,16 +74,14 @@ class PreviewManager:
             # 更新预览信息 - 将信息拆分成三个部分横向显示
             info_parts = info.split("\n")
             if len(info_parts) >= 3:
-                self.preview_info_var1.set(info_parts[0])
-                self.preview_info_var2.set(info_parts[1])
-                self.preview_info_var3.set(info_parts[2])
+                for i in range(3):
+                    self.preview_info[i].set(info_parts[i])
 
         except Exception as e:
             # 错误信息也分配到三个标签中
             error_msg = f"预览生成失败: {str(e)}"
-            self.preview_info_var1.set(error_msg)
-            self.preview_info_var2.set("")
-            self.preview_info_var3.set("")
+            self.preview_info[0].set(error_msg)
+            self.preview_info[2].set("")
 
 
 class StatusManager:

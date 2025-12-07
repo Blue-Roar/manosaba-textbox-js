@@ -1,8 +1,8 @@
 """配置管理模块"""
 import os
-from sys import platform
 from typing import Dict, Any, Optional
 import yaml
+from sys import platform
 from path_utils import get_base_path, get_resource_path, ensure_path_exists
 
 
@@ -13,17 +13,71 @@ class ConfigLoader:
         # 如果没有提供base_path，使用自动检测的路径
         self.base_path = base_path if base_path else get_base_path()
         self.config_path = get_resource_path("config")
-        self.ai_config = AIConfig()
+
+        self.config = AppConfig(os.path.dirname(os.path.abspath(__file__)))
 
         # 规范化平台键
+        self.platform = platform
         if platform.startswith('win'):
-            self.platform_key = 'win32'
+            self.platform = 'win32'
         elif platform == 'darwin':
-            self.platform_key = 'darwin'
+            self.platform = 'darwin'
         else:
-            self.platform_key = 'win32'
+            self.platform = 'win32'
 
-    def load_config(self, config_type: str, platform: Optional[str] = None, *args) -> Any:
+        #当前预览相关
+        self.current_character_index = 2
+
+        # 状态变量(为None时为随机选择,否则为手动选择)
+        self.selected_emotion = None
+        self.selected_background = None
+
+        #配置加载
+        self.mahoshojo = {}
+        self.text_configs_dict = {}
+        self.character_list = []
+        self.current_character = {}
+        self.keymap = {}
+        self.process_whitelist = []
+        self._load_configs()
+
+        self.background_count = self._get_background_count()  # 背景图片数量
+    
+    def _get_background_count(self) -> int:
+        """动态获取背景图片数量"""
+        try:
+            background_dir = get_resource_path(os.path.join("assets", "background"))
+            if os.path.exists(background_dir):
+                # 统计所有c开头的背景图片
+                bg_files = [f for f in os.listdir(background_dir) if f.lower().startswith('c')]
+                return len(bg_files)
+            else:
+                print(f"警告：背景图片目录不存在: {background_dir}")
+                return 0
+        except Exception as e:
+            print(f"获取背景数量失败: {e}")
+            return 0
+            
+    def _load_configs(self):
+        """加载所有配置"""
+        self.mahoshojo = self.load_config("chara_meta")
+        self.character_list = list(self.mahoshojo.keys())
+        self.current_character = self.mahoshojo[self.character_list[self.current_character_index - 1]]
+        self.text_configs_dict = self.load_config("text_configs")
+        self.keymap = self.load_config("keymap")
+        self.process_whitelist = self.load_config("process_whitelist")
+        self.gui_settings = self.load_config("gui_settings")
+        
+    def reload_configs(self):
+        """重新加载配置（用于热键更新后）"""
+        # 重新加载快捷键映射
+        self.keymap = self.load_config("keymap")
+        # 重新加载进程白名单
+        self.process_whitelist = self.load_config("process_whitelist")
+        # 重新加载GUI设置
+        self.gui_settings = self.load_config("gui_settings")
+
+    def load_config(self, config_type: str, *args) -> Any:
         """
         通用配置加载函数
         
@@ -64,10 +118,8 @@ class ConfigLoader:
         config = self._load_yaml_file("text_configs.yml")
         return config.get("text_configs") if config else None
     
-    def _load_keymap(self, platform=None):
+    def _load_keymap(self):
         """加载快捷键映射"""
-        platform_key = platform or self.platform_key
-        
         # 尝试加载配置文件
         config = self._load_yaml_file("keymap.yml")
         
@@ -75,14 +127,14 @@ class ConfigLoader:
         if config is None:
             default_config = self._get_default_keymap()
             self._save_yaml_file("keymap.yml", default_config)
-            return default_config.get(platform_key, {})
+            return default_config.get(self.platform, {})
         
-        return config.get(platform_key, {})
+        return config.get(self.platform, {})
     
     def _load_process_whitelist(self):
         """加载进程白名单"""
         config = self._load_yaml_file("process_whitelist.yml")
-        return config.get(self.platform_key, []) if config else []
+        return config.get(self.platform, []) if config else []
     
     def _load_gui_settings(self):
         """加载GUI设置"""
@@ -183,25 +235,14 @@ class ConfigLoader:
                 "pixel_reduction_ratio": 50
             }
         }
-    
-    # 以下是保存和辅助函数
-    def save_model_configs(self, model_configs: Dict[str, Any]) -> bool:
-        """保存模型配置到settings.yml"""
-        try:
-            settings = self._load_gui_settings()
-            
-            # 确保sentiment_matching部分存在
-            if "sentiment_matching" not in settings:
-                settings["sentiment_matching"] = {"enabled": False}
-            
-            # 更新模型配置
-            settings["sentiment_matching"]["model_configs"] = model_configs
-            
-            # 保存更新后的设置
-            return self.save_gui_settings(settings)
-        except Exception as e:
-            print(f"保存模型配置失败: {e}")
-            return False
+
+    def get_character(self, index: str | None = None, full_name: bool = False) -> str:
+        """获取角色名称"""
+        if index is not None:
+            return self.mahoshojo[index]["full_name"] if full_name else index
+        else:
+            chara = self.character_list[self.current_character_index - 1]
+            return self.mahoshojo[chara]["full_name"] if full_name else chara
     
     def get_available_models(self) -> Dict[str, Dict[str, Any]]:
         """获取可用模型配置"""
@@ -246,10 +287,8 @@ class ConfigLoader:
         
         return available_models
         
-    def save_keymap(self, platform_key=None, new_hotkeys=None):
+    def save_keymap(self,new_hotkeys=None):
         """保存快捷键设置到keymap.yml"""
-        platform_key = platform_key or self.platform_key
-        
         if new_hotkeys is None:
             return False
             
@@ -257,9 +296,9 @@ class ConfigLoader:
         keymap_data = self._load_yaml_file("keymap.yml") or self._get_default_keymap()
         
         # 合并新的快捷键设置到当前平台
-        if platform_key not in keymap_data:
-            keymap_data[platform_key] = {}
-        keymap_data[platform_key].update(new_hotkeys)
+        if self.platform not in keymap_data:
+            keymap_data[self.platform] = {}
+        keymap_data[self.platform].update(new_hotkeys)
 
         # 保存回文件
         return self._save_yaml_file("keymap.yml", keymap_data)
@@ -270,19 +309,19 @@ class ConfigLoader:
         existing_data = self._load_yaml_file("process_whitelist.yml") or {}
         
         # 更新当前平台的白名单
-        existing_data[self.platform_key] = processes
+        existing_data[self.platform] = processes
         
         # 保存回文件
         return self._save_yaml_file("process_whitelist.yml", existing_data)
         
-    def save_gui_settings(self, settings):
+    def save_gui_settings(self):
         """保存GUI设置到settings.yml"""
         # 如果文件已存在，则先加载现有配置，然后合并
         existing_settings = self._load_yaml_file("settings.yml") or {}
         
         # 合并设置，新的设置覆盖旧的
         merged_settings = existing_settings.copy()
-        merged_settings.update(settings)
+        merged_settings.update(self.gui_settings)
         
         # 保存回文件
         return self._save_yaml_file("settings.yml", merged_settings)
@@ -322,20 +361,6 @@ class ConfigLoader:
         
         return True, ""
 
-class AIConfig:
-    """AI配置类"""
-    def __init__(self):
-        self.ollama = {
-            "base_url": "http://localhost:11434/v1/",
-            "api_key": "",
-            "model": "qwen2.5"
-        }
-        self.deepseek = {
-            "base_url": "https://api.deepseek.com",
-            "api_key": "",
-            "model": "deepseek-chat"
-        }
-
 class AppConfig:
     """应用配置类"""
     
@@ -347,3 +372,6 @@ class AppConfig:
         # 使用自动检测的基础路径
         self.BASE_PATH = base_path if base_path else get_base_path()
         self.ASSETS_PATH = get_resource_path("assets")
+
+
+CONFIGS = ConfigLoader()

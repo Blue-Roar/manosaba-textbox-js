@@ -4,6 +4,7 @@ import threading
 import time
 import keyboard
 from load_utils import clear_cache
+from config import CONFIGS
 
 
 class HotkeyManager:
@@ -59,8 +60,8 @@ class HotkeyManager:
                 
                 # 重新加载设置以获取最新配置
                 try:
-                    hotkeys = self.core.keymap
-                    gui_settings = self.core.get_gui_settings()
+                    hotkeys = CONFIGS.keymap
+                    gui_settings = CONFIGS.gui_settings
                     quick_chars = gui_settings.get("quick_characters", {})
                 except Exception as e:
                     print(f"加载热键设置失败: {e}")
@@ -174,8 +175,8 @@ class HotkeyManager:
 
     def switch_character(self, direction):
         """切换角色"""
-        current_index = self.core.current_character_index
-        total_chars = len(self.core.character_list)
+        current_index = CONFIGS.current_character_index
+        total_chars = len(CONFIGS.character_list)
     
         new_index = current_index + direction
         if new_index > total_chars:
@@ -188,8 +189,8 @@ class HotkeyManager:
     
     def switch_to_character_by_id(self, char_id):
         """通过角色ID切换到指定角色"""
-        if char_id and char_id in self.core.character_list:
-            char_index = self.core.character_list.index(char_id) + 1
+        if char_id and char_id in CONFIGS.character_list:
+            char_index = CONFIGS.character_list.index(char_id) + 1
             if self.core.switch_character(char_index):
                 self._handle_character_switch_success()
     
@@ -203,8 +204,8 @@ class HotkeyManager:
             self.gui.emotion_random_var.set(False)
             self.gui.on_emotion_random_changed()
     
-        emotion_count = self.core.get_current_emotion_count()
-        current_emotion = self.core.selected_emotion or 1
+        emotion_count = CONFIGS.current_character["emotion_count"]
+        current_emotion = CONFIGS.selected_emotion or 1
     
         new_emotion = current_emotion + direction
         if new_emotion > emotion_count:
@@ -212,7 +213,7 @@ class HotkeyManager:
         elif new_emotion < 1:
             new_emotion = emotion_count
     
-        self.core.selected_emotion = new_emotion
+        CONFIGS.selected_emotion = new_emotion
         self.gui.emotion_combo.set(f"表情 {new_emotion}")
         self.gui.update_preview()
         self.gui.update_status(f"已切换到表情: {new_emotion}")
@@ -223,20 +224,20 @@ class HotkeyManager:
         clear_cache("character")
         # 更新GUI显示
         self.gui.character_var.set(
-            f"{self.core.get_character(full_name=True)} ({self.core.get_character()})"
+            f"{CONFIGS.get_character(full_name=True)} ({CONFIGS.get_character()})"
         )
         self.gui.update_emotion_options()
         
         # 重置表情索引为1，与手动切换保持一致
         self.gui.emotion_combo.set("表情 1")
         if self.gui.emotion_random_var.get():
-            self.core.selected_emotion = None
+            CONFIGS.selected_emotion = None
         else:
-            self.core.selected_emotion = 1
+            CONFIGS.selected_emotion = 1
         
         self.gui.update_preview()
         self.gui.update_status(
-            f"已切换到角色: {self.core.get_character(full_name=True)}"
+            f"已切换到角色: {CONFIGS.get_character(full_name=True)}"
         )
     
     def _cancel_sentiment_matching(self):
@@ -253,8 +254,8 @@ class HotkeyManager:
             self.gui.background_random_var.set(False)
             self.gui.on_background_random_changed()
 
-        current_bg = self.core.selected_background or 1
-        total_bgs = self.core.background_count
+        current_bg = CONFIGS.selected_background or 1
+        total_bgs = CONFIGS.background_count
 
         new_bg = current_bg + direction
         if new_bg > total_bgs:
@@ -262,7 +263,7 @@ class HotkeyManager:
         elif new_bg < 1:
             new_bg = total_bgs
 
-        self.core.selected_background = new_bg
+        CONFIGS.selected_background = new_bg
         self.gui.background_combo.set(f"背景 {new_bg}")
         self.gui.update_preview()
         self.gui.update_status(f"已切换到背景: {new_bg}")
