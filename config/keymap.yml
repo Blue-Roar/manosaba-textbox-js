@@ -33,4 +33,4 @@ win32:
   prev_emotion: ctrl+alt+u
   quit: ctrl+q
   start_generate: ctrl+e
-  toggle_listener: alt+ctrl+p
+  toggle_listener: ctrl+alt+p
