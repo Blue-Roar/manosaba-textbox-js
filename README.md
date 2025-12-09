@@ -57,99 +57,8 @@
 - 🔍 实时生成 - 图片缓存在内存中，不占硬盘空间
 - 🔧 高度定制 - 支持自定义角色导入，可配置角色差分和背景是否随机等
 
-## 使用方法
-1. 从Release下载运行：
-    1. 下载最新Release版本
-    2. 解压到任意文件夹
-    3. 运行exe文件
-2. 从源码运行：
-    1. 下载项目代码
-      ```
-      git clone https://github.com/YangQwQ/Text_box-of-mahoushoujo_no_majosaiban-GUI.git
-      ```
-    2. 安装依赖：
-      ```
-      pip install -r requirements.txt
-      ```
-    3. 运行程序：
-      ```
-      python main.py
-      ```
-3. 操作说明
-   - 切换角色 - 使用选框选择目标角色和表情，也可以使用快捷键，具体请看设置
-   - 输入文本 - 在聊天框或文本编辑器中输入想要添加的文本
-   - 图片预览 - 在发送前预览图片效果
-   - 生成图片 - 按下 `Ctrl+E` 键自动生成并发送
-4. 字体字号及颜色说明：
-   - 字体文件放置在`<根目录>/assets/fonts`文件夹中，然后打开设置即可修改
-   - 字体大小和颜色可以在设置中修改
-   - 关于强调字体颜色，如下图所示：
-   <img width="1280" height="417" alt="43ba3c2e-e3cd-420f-8672-b6b16a1b74a8" src="https://github.com/user-attachments/assets/159eedfb-2659-4dc0-ad96-53778dffe2bd" />
-5. 表情匹配设置：
-   - 表情匹配功能默认关闭，需要在设置中开启
-   - 可以下载ollama运行本地模型，也可以使用deepseek的api，需要其它模型的话请自行在setting.yml里面添加
-   - 情感匹配推荐使用ollama运行OmniDimen-4B-Emotion模型（我感觉又快又准）
-6. ollama本地模型配置教程：
-   - 下载并安装[ollama](https://ollama.com/download)
-   - 如果不希望ollama把模型下载在c盘或者需要模型一直运行，需要设置环境变量，如图：
-     <img width="272" height="67" alt="image" src="https://github.com/user-attachments/assets/78dfed24-be05-4af5-89f3-489908cb12c0" />
-   - 运行`ollama run hf.co/OmniDimen/OmniDimen-4B-Emotion-GGUF-q4_K_M:Q4_K_M`然后等待模型下载完毕，这个模型在情感分析方面效率较高，推荐使用（分析时间大概500ms）
-   - 模型下载完毕后，在cmd执行`ollama serve`，程序有开着似乎也行
-   - 在设置内选择使用ollama，模型名称填写为`hf.co/OmniDimen/OmniDimen-4B-Emotion-GGUF-q4_K_M:Q4_K_M`，然后点击测试链接，或在主界面点击情感匹配并等待连接即可
-
-### 添加自定义角色
-***
-#### 第1步
-请下载需要的角色图片，放置于`<根目录>/assets/chara/<角色名>`文件夹中，
-并统一命名格式为`<角色名> (<差分编号>)`，如图：
-
-<img width="230" height="308" alt="image" src="https://github.com/user-attachments/assets/892b6c8e-b857-482b-94be-07ad240f2a3b" />
-
-> 注意角色名与编号之间的空格
-
-#### 第2步
-修改**2个**配置文件，位于`<根目录>/config`文件夹：
-1. `chara_meta.yml`: 包含角色元数据及表情情感标注，在末尾添加：
-```yaml
-ema:                  # 填写角色名（与你的文件夹名相同）
-  full_name: 樱羽艾玛  # 填写角色全名（仅用于可读性显示）
-  emotion_count: 8    # 填写差分数量
-  font: font3.ttf     # 填写使用的字体
-  "无感情": [2,3]     # 填写无感情差分的编号，当与其它情感均不匹配时会选择这个发送
-  "愤怒": [1,3]
-  "嫌弃": [5]
-  "疑惑": [5]
-  "惊讶": [7]
-  "伤心": [5]
-  "害羞": [4,8]
-  "开心": [2,6]
-  "恐惧": [5]
-  "无语": [5,3]
-  "大笑": [6]
-```
-其中表情的情感标注不是必须的，如果不使用ai来自动匹配的话，可以整段删除（没有可选表情会回退回随机选择表情）
-
-2. `text_configs.yml`: 包含角色名称的显示方法，在末尾添加：
-```yaml
-warden:
-  - text: 典 # 文字内容
-    position: [ 759, 63 ]  # 绝对坐标
-    font_color: [ 195, 209, 231 ]  # 颜色RGB值
-    font_size: 196  # 文字大小
-  - text: 狱 # 下面以此类推
-    position: [ 948, 175 ]
-    font_color: [ 255, 255, 255 ]
-    font_size: 92
-  - text: 长
-    position: [ 1053, 117 ]
-    font_color: [ 255, 255, 255 ]
-    font_size: 147
-  - text: ""
-    position: [ 0, 0 ]
-    font_color: [ 255, 255, 255 ]
-    font_size: 1
-```
-另外，若要使用角色，请下载对应角色文件夹并放到项目文件夹的`assets/chara`文件夹中
+## 使用方法与配置教程
+参阅[项目Wiki页面](https://github.com/oplivilqo/manosaba_text_box/wiki/GUI-%E5%88%86%E6%94%AF-(%E7%94%A8%E6%88%B7%E7%95%8C%E9%9D%A2))
 
 ## To-Do List
 1. 添加全局配置实例，统一管理所有配置 (v1.5)
@@ -250,6 +159,7 @@ warden:
 <div align="right">
   
 ### 以上. 柊回文————2025.11.15
+
 
 
 
