@@ -5,7 +5,6 @@ from tkinter import ttk, messagebox
 import threading
 import os
 import re
-import sys
 from path_utils import get_available_fonts
 from config import CONFIGS
 
@@ -17,21 +16,6 @@ class SettingsWindow:
         self.parent = parent
         self.core = core
         self.gui = gui
-
-        # 加载设置
-        self.settings = CONFIGS.gui_settings
-
-        # 获取可用的AI模型配置
-        self.ai_models = CONFIGS.get_available_models()
-        
-        # 确定当前平台
-        self.platform = sys.platform
-        if self.platform.startswith('win'):
-            self.platform_key = 'win32'
-        elif self.platform == 'darwin':
-            self.platform_key = 'darwin'
-        else:
-            self.platform_key = 'win32'  # 默认
 
         # 创建窗口
         self.window = tk.Toplevel(parent)
@@ -85,7 +69,7 @@ class SettingsWindow:
     def _setup_general_tab(self, parent):
         """设置常规设置标签页"""
         # 获取情感匹配设置
-        sentiment_settings = self.settings.get("sentiment_matching", {})
+        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
         
         # 字体设置
         font_frame = ttk.LabelFrame(parent, text="字体设置", padding="10")
@@ -97,7 +81,7 @@ class SettingsWindow:
         available_fonts = self._get_available_fonts()
         
         self.font_family_var = tk.StringVar(
-            value=self.settings.get("font_family", "Arial")
+            value=CONFIGS.gui_settings.get("font_family", "Arial")
         )
         font_combo = ttk.Combobox(
             font_frame,
@@ -113,7 +97,7 @@ class SettingsWindow:
         ttk.Label(font_frame, text="对话框字号:").grid(
             row=1, column=0, sticky=tk.W, pady=5
         )
-        self.font_size_var = tk.IntVar(value=self.settings.get("font_size", 12))
+        self.font_size_var = tk.IntVar(value=CONFIGS.gui_settings.get("font_size", 12))
         font_size_spin = ttk.Spinbox(
             font_frame, textvariable=self.font_size_var, from_=8, to=120, width=10
         )
@@ -137,7 +121,7 @@ class SettingsWindow:
         color_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
         
         self.text_color_var = tk.StringVar(
-            value=self.settings.get("text_color", "#FFFFFF")
+            value=CONFIGS.gui_settings.get("text_color", "#FFFFFF")
         )
         color_entry = ttk.Entry(
             color_frame,
@@ -173,7 +157,7 @@ class SettingsWindow:
         bracket_color_frame.grid(row=4, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
         
         self.bracket_color_var = tk.StringVar(
-            value=self.settings.get("bracket_color", "#EF4F54")
+            value=CONFIGS.gui_settings.get("bracket_color", "#EF4F54")
         )
         bracket_color_entry = ttk.Entry(
             bracket_color_frame,
@@ -223,7 +207,7 @@ class SettingsWindow:
         )
         
         # 动态获取模型列表
-        model_names = list(self.ai_models.keys())
+        model_names = list(CONFIGS.ai_models.keys())
         self.ai_model_var = tk.StringVar(
             value=sentiment_settings.get("ai_model", model_names[0] if model_names else "ollama")
         )
@@ -268,7 +252,7 @@ class SettingsWindow:
 
         # 像素减少压缩
         self.pixel_reduction_var = tk.BooleanVar(
-            value=self.settings.get("image_compression", {}).get("pixel_reduction_enabled", False)
+            value=CONFIGS.gui_settings.get("image_compression", {}).get("pixel_reduction_enabled", False)
         )
         pixel_reduction_cb = ttk.Checkbutton(
             compression_frame,
@@ -287,7 +271,7 @@ class SettingsWindow:
         pixel_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
         
         self.pixel_reduction_ratio_var = tk.IntVar(
-            value=self.settings.get("image_compression", {}).get("pixel_reduction_ratio", 50)
+            value=CONFIGS.gui_settings.get("image_compression", {}).get("pixel_reduction_ratio", 50)
         )
         pixel_scale = ttk.Scale(
             pixel_frame,
@@ -313,10 +297,11 @@ class SettingsWindow:
             row=4, column=0, columnspan=2, sticky=tk.W, pady=2
         )
 
+
     def _setup_hotkey_tab(self, parent):
         """设置快捷键标签页"""
         # 创建滚动框架
-        canvas = tk.Canvas(parent)
+        canvas = tk.Canvas(parent, highlightthickness=0, background='#f0f0f0')
         scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
 
@@ -324,15 +309,28 @@ class SettingsWindow:
             "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        # 创建窗口并设置合适的宽度
+        canvas_frame = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        
+        # 更新函数确保框架宽度正确
+        def update_scrollable_frame_width(event=None):
+            # 获取canvas当前宽度并减去滚动条宽度
+            canvas_width = canvas.winfo_width()
+            if canvas_width > 10:  # 确保有有效宽度
+                # 设置框架宽度为canvas宽度减去一些边距
+                canvas.itemconfig(canvas_frame, width=canvas_width - 10)
+        
+        canvas.bind("<Configure>", update_scrollable_frame_width)
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
-        # 从配置文件重新加载快捷键
-        self.original_hotkeys = CONFIGS.load_config("keymap")
-        hotkeys = self.original_hotkeys
+        # 初始更新一次宽度
+        parent.after(100, update_scrollable_frame_width)
+        
+        # 加载快捷键
+        hotkeys = CONFIGS.keymap
         
         # 生成快捷键放在第一个
         generate_frame = ttk.LabelFrame(scrollable_frame, text="生成控制", padding="10")
@@ -427,7 +425,7 @@ class SettingsWindow:
             full_name = CONFIGS.get_character(char_id, full_name=True)
             character_options.append(f"{full_name} ({char_id})")
 
-        quick_chars = self.settings.get("quick_characters", {})
+        quick_chars = CONFIGS.gui_settings.get("quick_characters", {})
 
         for i in range(1, 7):
             # 获取当前设置的角色
@@ -441,50 +439,64 @@ class SettingsWindow:
                 quick_char_frame,
                 f"快捷键 {i}",
                 f"character_{i}",
-                hotkeys.get(f"character_{i}", f"ctrl+{i}"),
                 current_display,
                 character_options,
-i - 1,
+                i - 1,
             )
 
     def _create_hotkey_editable_row(self, parent, label, key, hotkey_value, row):
         """创建可编辑的快捷键显示行"""
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky=tk.W, pady=2)
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky=tk.W, pady=2, padx=(0, 10))
 
-        # 快捷键显示（可编辑）
-        hotkey_var = tk.StringVar(value=hotkey_value)
-        setattr(self, f"{key}_hotkey_var", hotkey_var)
-
-        entry = ttk.Entry(parent, textvariable=hotkey_var, width=20)
-        entry.grid(row=row, column=1, padx=5, pady=2, sticky=tk.W)
-
-    def _create_character_hotkey_row(
-        self, parent, label, key, hotkey_value, current_char, character_options, row
-    ):
-        """创建角色快捷键设置行"""
-        ttk.Label(parent, text=label).grid(row=row, column=0, sticky=tk.W, pady=2)
-
-        # 角色选择下拉框
-        char_var = tk.StringVar(value=current_char)
-        setattr(self, f"{key}_char_var", char_var)
-
-        char_combo = ttk.Combobox(
-            parent,
-            textvariable=char_var,
-            values=character_options,
-            state="readonly",
-            width=25,
-        )
-        char_combo.grid(row=row, column=1, padx=5, pady=2, sticky=tk.W)
-        char_combo.bind("<<ComboboxSelected>>", self._on_setting_changed)
-
+        # 创建包含Entry和Button的Frame，实现右对齐
+        control_frame = ttk.Frame(parent)
+        control_frame.grid(row=row, column=1, sticky=(tk.W, tk.E), pady=2, padx=5)
+        
         # 快捷键显示（只读）
         hotkey_var = tk.StringVar(value=hotkey_value)
         setattr(self, f"{key}_hotkey_var", hotkey_var)
 
-        entry = ttk.Entry(parent, textvariable=hotkey_var, width=15, state="readonly")
-        entry.grid(row=row, column=2, padx=5, pady=2, sticky=tk.W)
+        entry = ttk.Entry(control_frame, textvariable=hotkey_var, state="readonly")
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        
+        # 添加配置按钮 - 保持右对齐
+        config_btn = ttk.Button(
+            control_frame, 
+            text="配置", 
+            width=6,
+            command=lambda k=key: self._start_key_config(k)
+        )
+        config_btn.pack(side=tk.RIGHT)
+        
+        # 配置列权重，使Entry可以扩展填充
+        parent.columnconfigure(1, weight=1)
 
+    def _create_character_hotkey_row(
+        self, parent, label, key, current_char, character_options, row
+    ):
+        """创建角色快捷键设置行"""
+        ttk.Label(parent, text=label).grid(row=row, column=0, sticky=tk.W, pady=2, padx=(0, 10))
+
+        # 创建包含Combobox的Frame
+        control_frame = ttk.Frame(parent)
+        control_frame.grid(row=row, column=1, sticky=(tk.W, tk.E), pady=2, padx=5)
+        
+        # 角色选择下拉框 - 修改为填充可用空间
+        char_var = tk.StringVar(value=current_char)
+        setattr(self, f"{key}_char_var", char_var)
+
+        char_combo = ttk.Combobox(
+            control_frame,
+            textvariable=char_var,
+            values=character_options,
+            state="readonly",
+        )
+        char_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        char_combo.bind("<<ComboboxSelected>>", self._on_setting_changed)
+
+        # 配置列权重，使Combobox可以扩展填充
+        parent.columnconfigure(1, weight=1)
+        
     def _setup_whitelist_tab(self, parent):
         """设置进程白名单标签页"""
         # 创建滚动文本框
@@ -509,11 +521,11 @@ i - 1,
             widget.destroy()
         
         selected_model = self.ai_model_var.get()
-        if selected_model not in self.ai_models:
+        if selected_model not in CONFIGS.ai_models:
             return
             
-        model_config = self.ai_models[selected_model]
-        sentiment_settings = self.settings.get("sentiment_matching", {})
+        model_config = CONFIGS.ai_models[selected_model]
+        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
         model_settings = sentiment_settings.get("model_configs", {}).get(selected_model, {})
         
         # 创建参数输入控件
@@ -580,10 +592,72 @@ i - 1,
         
         self.params_frame.columnconfigure(1, weight=1)
 
+    
+    def _start_key_config(self, key):
+        """开始配置快捷键"""
+        # 获取对应的变量
+        hotkey_var = getattr(self, f"{key}_hotkey_var")
+        ori_key = hotkey_var.get()
+
+        # 设置初始文本
+        hotkey_var.set("请输入按键")
+
+        # 启动监听线程
+        self._current_config_key = key
+        self._config_thread_stop = False
+        self._config_thread = threading.Thread(
+            target=self._key_config_listener,
+            args=(key,ori_key),
+            daemon=True
+        )
+        self._config_thread.start()
+
+    def _key_config_listener(self, key, ori_key):
+        """按键配置监听线程"""
+        import keyboard
+        import time
+        
+        hotkey_var = getattr(self, f"{key}_hotkey_var")
+        previous_keys = ""
+        wait_release = False
+        
+        try:
+            while not self._config_thread_stop:
+                # 获取当前按下的按键
+                current_keys = keyboard.get_hotkey_name()
+                
+                # 如果按下ESC键，退出配置
+                if keyboard.is_pressed('esc'):
+                    def restore_original():
+                        hotkey_var.set(ori_key)
+                    self.window.after(0, restore_original)
+                    break
+                
+                # 如果按键组合发生变化，更新显示
+                if current_keys:
+                    if len(current_keys) > len(previous_keys):
+                        wait_release = True
+                        # 在主线程中更新显示
+                        def update_display():
+                            hotkey_var.set(current_keys)
+                        self.window.after(0, update_display)
+                        previous_keys = current_keys
+                elif wait_release:
+                    break
+                    
+                # 短暂延时
+                time.sleep(0.05)
+        
+        except Exception as e:
+            print(f"按键配置监听出错: {e}")
+        finally:
+            # 线程结束时标记
+            self._config_thread_stop = True
+
     def _test_ai_connection(self):
         """测试AI连接 - 这会触发模型初始化"""
         selected_model = self.ai_model_var.get()
-        if selected_model not in self.ai_models:
+        if selected_model not in CONFIGS.ai_models:
             return
             
         # 获取当前配置
@@ -610,13 +684,13 @@ i - 1,
             self.test_btn.config(text="连接成功")
             # 测试成功时，更新当前配置
             selected_model = self.ai_model_var.get()
-            if "model_configs" not in self.settings["sentiment_matching"]:
-                self.settings["sentiment_matching"]["model_configs"] = {}
-            self.settings["sentiment_matching"]["model_configs"][selected_model] = {
-                "base_url": self.api_url_var.get(),
-                "api_key": self.api_key_var.get(),
-                "model": self.model_name_var.get()
-            }
+            if "model_configs" not in CONFIGS.gui_settings["sentiment_matching"]:
+                CONFIGS.gui_settings["sentiment_matching"]["model_configs"] = {}
+            # CONFIGS.gui_settings["sentiment_matching"]["model_configs"][selected_model] = {
+            #     "base_url": self.api_url_var.get(),
+            #     "api_key": self.api_key_var.get(),
+            #     "model": self.model_name_var.get()
+            # }
             # 2秒后恢复文本
             self.window.after(2000, lambda: self.test_btn.config(text="测试连接"))
         else:
@@ -648,8 +722,8 @@ i - 1,
     def _on_setting_changed(self, event=None):
         """设置改变时的回调"""
         # 更新设置字典
-        self.settings["font_family"] = self.font_family_var.get()
-        self.settings["font_size"] = self.font_size_var.get()
+        CONFIGS.gui_settings["font_family"] = self.font_family_var.get()
+        CONFIGS.gui_settings["font_size"] = self.font_size_var.get()
 
         # 只在颜色有效时更新设置中的颜色值
         color_value = self.text_color_var.get()
@@ -657,7 +731,7 @@ i - 1,
             # 更新颜色预览
             self.color_preview_label.configure(background=color_value)
             # 更新设置字典中的颜色值
-            self.settings["text_color"] = color_value
+            CONFIGS.gui_settings["text_color"] = color_value
         else:
             # 颜色无效时，不更新设置字典，保持之前的有效值
             pass
@@ -668,35 +742,35 @@ i - 1,
             # 更新强调颜色预览
             self.bracket_color_preview_label.configure(background=bracket_color_value)
             # 更新设置字典中的强调颜色值
-            self.settings["bracket_color"] = bracket_color_value
+            CONFIGS.gui_settings["bracket_color"] = bracket_color_value
         else:
             # 颜色无效时，不更新设置字典，保持之前的有效值
             pass
 
         # 更新情感匹配设置
-        if "sentiment_matching" not in self.settings:
-            self.settings["sentiment_matching"] = {}
+        if "sentiment_matching" not in CONFIGS.gui_settings:
+            CONFIGS.gui_settings["sentiment_matching"] = {}
         
-        self.settings["sentiment_matching"]["enabled"] = self.sentiment_enabled_var.get()
-        self.settings["sentiment_matching"]["ai_model"] = self.ai_model_var.get()
+        CONFIGS.gui_settings["sentiment_matching"]["enabled"] = self.sentiment_enabled_var.get()
+        CONFIGS.gui_settings["sentiment_matching"]["ai_model"] = self.ai_model_var.get()
         
         # 保存模型配置
-        if "model_configs" not in self.settings["sentiment_matching"]:
-            self.settings["sentiment_matching"]["model_configs"] = {}
+        if "model_configs" not in CONFIGS.gui_settings["sentiment_matching"]:
+            CONFIGS.gui_settings["sentiment_matching"]["model_configs"] = {}
             
         selected_model = self.ai_model_var.get()
-        self.settings["sentiment_matching"]["model_configs"][selected_model] = {
+        CONFIGS.gui_settings["sentiment_matching"]["model_configs"][selected_model] = {
             "base_url": self.api_url_var.get(),
             "api_key": self.api_key_var.get(),
             "model": self.model_name_var.get()
         }
             
         # 更新图像压缩设置
-        if "image_compression" not in self.settings:
-            self.settings["image_compression"] = {}
+        if "image_compression" not in CONFIGS.gui_settings:
+            CONFIGS.gui_settings["image_compression"] = {}
         
-        self.settings["image_compression"]["pixel_reduction_enabled"] = self.pixel_reduction_var.get()
-        self.settings["image_compression"]["pixel_reduction_ratio"] = self.pixel_reduction_ratio_var.get()
+        CONFIGS.gui_settings["image_compression"]["pixel_reduction_enabled"] = self.pixel_reduction_var.get()
+        CONFIGS.gui_settings["image_compression"]["pixel_reduction_ratio"] = self.pixel_reduction_ratio_var.get()
 
         # 更新快速角色设置
         quick_characters = {}
@@ -710,7 +784,7 @@ i - 1,
             else:
                 quick_characters[f"character_{i}"] = ""
 
-        self.settings["quick_characters"] = quick_characters
+        CONFIGS.gui_settings["quick_characters"] = quick_characters
 
     def _on_save(self):
         """保存设置并关闭窗口"""
@@ -726,54 +800,38 @@ i - 1,
         
         self._on_setting_changed()
 
-        # 检查快捷键是否有更改并保存
-        if self._check_hotkeys_changed():
-            if not self._save_hotkey_settings():
-                return False
-            # 只在快捷键有更改时重新初始化热键管理器
-            CONFIGS.reload_configs()
-            self.gui.reinitialize_hotkeys()
-            self.hotkeys_changed = False
-
         # 保存设置到文件
         CONFIGS.save_gui_settings()
-        # 保存进程白名单
         self._save_whitelist_settings()
+        self._save_hotkey_settings()
 
         # 应用设置时检查是否需要重新初始化AI模型
         self.core._reinitialize_sentiment_analyzer_if_needed()
         return True
 
+
     def _save_hotkey_settings(self):
         """保存快捷键设置"""
         # 构建当前平台的新快捷键字典
         new_hotkeys = {}
+        
+        # 收集普通快捷键
         for key in ['start_generate', 'next_character', 'prev_character', 'next_emotion', 'prev_emotion', 
-                'next_background', 'prev_background', 'toggle_listener']:
+                    'next_background', 'prev_background', 'toggle_listener']:
             var_name = f"{key}_hotkey_var"
             if hasattr(self, var_name):
                 hotkey_var = getattr(self, var_name)
-                new_hotkeys[key] = hotkey_var.get()
+                hotkey_value = hotkey_var.get()
+                # 如果用户输入了"请输入按键"，跳过保存
+                if hotkey_value != "请输入按键":
+                    new_hotkeys[key] = hotkey_value
         
-        # 检查快捷键有效性
-        for key_name, hotkey in new_hotkeys.items():
-            if hotkey:  # 只检查非空的快捷键
-                is_valid, error_msg = CONFIGS.validate_hotkey_format(hotkey)
-                if not is_valid:
-                    messagebox.showerror("快捷键错误", error_msg)
-                    return False
-        
-        # 使用config_loader保存
         success = CONFIGS.save_keymap(new_hotkeys)
         if success:
             # 更新原始快捷键以反映保存状态
-            self.original_hotkeys = new_hotkeys
+            CONFIGS.keymap = new_hotkeys
         
         return success
-
-    def _show_hotkey_error(self, message):
-        """显示快捷键错误消息"""
-        messagebox.showerror("快捷键错误", message)
         
     def _save_whitelist_settings(self):
         """保存进程白名单设置"""
@@ -790,19 +848,6 @@ i - 1,
             return True
         else:
             return False
-
-    def _check_hotkeys_changed(self):
-        """检查快捷键是否有更改"""
-        # 获取当前快捷键设置
-
-        for key in ['start_generate', 'next_character', 'prev_character', 'next_emotion', 'prev_emotion', 
-                   'next_background', 'prev_background', 'toggle_listener']:
-            var_name = f"{key}_hotkey_var"
-            if hasattr(self, var_name):
-                if  getattr(self, var_name).get() != self.original_hotkeys[key]:
-                    return True
-
-        return False
 
     def _update_color_preview(self, *args):
         """更新颜色预览标签"""

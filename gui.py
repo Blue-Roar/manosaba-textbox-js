@@ -30,8 +30,6 @@ class ManosabaGUI:
         self.preview_manager = PreviewManager(self)
         self.status_manager = StatusManager(self)
 
-        # 热键监听状态
-        self.hotkey_listener_active = True
         # 图片生成状态
         self.is_generating = False
 
@@ -82,13 +80,6 @@ class ManosabaGUI:
                 self.update_status(f"角色 {character} 预加载完成 - 就绪")
             else:
                 self.update_status("就绪 - 等待生成预览")
-
-    def reinitialize_hotkeys(self):
-        """重新初始化热键管理器"""
-        # 直接重新创建热键管理器
-        self.hotkey_manager = HotkeyManager(self)
-        self.hotkey_manager.setup_hotkeys()
-        self.update_status("热键设置已更新")
 
     def setup_gui(self):
         """设置 GUI 界面"""

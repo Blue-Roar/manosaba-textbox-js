@@ -13,11 +13,12 @@ class HotkeyManager:
     def __init__(self, gui):
         self.gui = gui
         self.core = gui.core
-        self.hotkey_listener_active = True
+        
         self.hotkey_thread = None
         self._thread_lock = threading.Lock()  # 线程锁，防止重复创建线程
-        self._key_states = {}  # 记录按键状态
-        self._pending_action = None  # 待执行的动作
+
+        self._hotkey_was_trigger = False
+        self.hotkey_listener_active = True
 
     def setup_hotkeys(self):
         """设置热键监听（仅在初始化时调用）"""
@@ -30,69 +31,41 @@ class HotkeyManager:
             self.hotkey_thread.start()
             print("热键监听线程已启动")
 
-    def restart_hotkey_listener(self):
-        """重启热键监听线程（用于修改快捷键设置后）"""
-        with self._thread_lock:
-            # 先停止现有线程
-            self._stop_hotkey_listener()
-            
-            # 等待一小段时间确保线程完全停止
-            time.sleep(0.1)
-            
-            # 重新启动线程
-            self.hotkey_listener_active = True
-            self.hotkey_thread = threading.Thread(target=self.hotkey_listener, daemon=True)
-            self.hotkey_thread.start()
-            print("热键监听线程已重启")
-
-    def _stop_hotkey_listener(self):
-        """内部方法：停止热键监听线程"""
-        self.hotkey_listener_active = False
-        if self.hotkey_thread and self.hotkey_thread.is_alive():
-            self.hotkey_thread.join(timeout=1.0)
-            if self.hotkey_thread.is_alive():
-                print("警告：热键监听线程未能正常停止，强制结束")
-
     def hotkey_listener(self):
         """热键监听线程"""
         try:
-            while True:  # 保持无限循环，通过hotkey_listener_active控制是否处理热键
-                
+            while True:
+                time.sleep(0.1)
+
                 # 重新加载设置以获取最新配置
                 try:
                     hotkeys = CONFIGS.keymap
-                    gui_settings = CONFIGS.gui_settings
-                    quick_chars = gui_settings.get("quick_characters", {})
+                    quick_chars = CONFIGS.gui_settings.get("quick_characters", {})
                 except Exception as e:
                     print(f"加载热键设置失败: {e}")
                     time.sleep(1)
                     continue
                 
-                # 检查停止监听热键（始终监听，不受hotkey_listener_active影响）
-                toggle_hotkey = hotkeys.get("toggle_listener", "alt+ctrl+p")
-                try:
-                    is_pressed = keyboard.is_pressed(toggle_hotkey)
-                    prev_state = self._key_states.get("toggle_listener", False)
-                    
-                    # 检测到按键释放
-                    if prev_state and not is_pressed:
-                        self.gui.root.after(0, self.toggle_hotkey_listener)
-                        time.sleep(0.3)  # 防抖，防止快速重复切换
-                    
-                    # 更新按键状态
-                    self._key_states["toggle_listener"] = is_pressed
-                    
-                except Exception as e:
-                    print(f"切换监听热键检测错误: {e}")
+                # 获取当前按下的热键组合
+                current_hotkey = keyboard.get_hotkey_name()
+                if current_hotkey not in hotkeys.values():
+                    self._hotkey_was_trigger = False
+                    continue
+                elif self._hotkey_was_trigger:
+                    # 等待按键释放
+                    continue
+
+                # 检查切换监听热键（始终监听）
+                if current_hotkey == hotkeys.get("toggle_listener", "alt+ctrl+p"):
+                    self.gui.root.after(0, self.toggle_hotkey_listener)
+                    self._hotkey_was_trigger = True
                 
                 # 如果监听未激活，则等待
                 if not self.hotkey_listener_active:
-                    time.sleep(0.1)
                     continue
-
-                # 检查每个热键
+                
+                # 遍历所有热键（排除切换监听热键）
                 for action, hotkey in hotkeys.items():
-                    # 跳过toggle_listener，因为已经单独处理了
                     if action == "toggle_listener":
                         continue
                         
@@ -106,42 +79,16 @@ class HotkeyManager:
                         "next_emotion",
                         "prev_emotion",
                     ] or action.startswith("character_"):
-                        
-                        # 检测按键状态变化
-                        try:
-                            is_pressed = keyboard.is_pressed(hotkey)
-                            prev_state = self._key_states.get(action, False)
-                            
-                            # 检测到按键释放
-                            if prev_state and not is_pressed:
-                                # 对于角色快捷键，传递角色ID
-                                if action.startswith("character_"):
-                                    char_id = quick_chars.get(action, "")
-                                    self.gui.root.after(
-                                        0,
-                                        lambda a=action, c=char_id: self.handle_hotkey_action(
-                                            a, c
-                                        ),
-                                    )
-                                else:
-                                    self.gui.root.after(
-                                        0, lambda a=action: self.handle_hotkey_action(a)
-                                    )
-                            
-                            # 更新按键状态
-                            self._key_states[action] = is_pressed
-                            
-                        except Exception as e:
-                            print(f"热键检测错误 {hotkey}: {e}")
-
-                time.sleep(0.05)  # 降低CPU使用率
-
+                        if current_hotkey == hotkey:
+                            self._hotkey_was_trigger = True
+                            if action.startswith("character_"):
+                                char_id = quick_chars.get(action, "")
+                                self.gui.root.after(0,lambda a=action, c=char_id: self.handle_hotkey_action(a, c),)
+                            else:
+                                self.gui.root.after(0, lambda a=action: self.handle_hotkey_action(a))
+                            break  # 找到匹配的热键就退出循环
         except Exception as e:
             print(f"热键监听错误: {e}")
-            if self.hotkey_listener_active:
-                time.sleep(1)
-                if self.hotkey_listener_active:
-                    self.restart_hotkey_listener()
 
     def toggle_hotkey_listener(self):
         """切换热键监听状态"""
@@ -190,6 +137,8 @@ class HotkeyManager:
     def switch_to_character_by_id(self, char_id):
         """通过角色ID切换到指定角色"""
         if char_id and char_id in CONFIGS.character_list:
+            if char_id == CONFIGS.character_list[CONFIGS.current_character_index - 1]:
+                return
             char_index = CONFIGS.character_list.index(char_id) + 1
             if self.core.switch_character(char_index):
                 self._handle_character_switch_success()

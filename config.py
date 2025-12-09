@@ -63,10 +63,13 @@ class ConfigLoader:
         self.mahoshojo = self.load_config("chara_meta")
         self.character_list = list(self.mahoshojo.keys())
         self.current_character = self.mahoshojo[self.character_list[self.current_character_index - 1]]
+
         self.text_configs_dict = self.load_config("text_configs")
         self.keymap = self.load_config("keymap")
         self.process_whitelist = self.load_config("process_whitelist")
-        self.gui_settings = self.load_config("gui_settings")
+
+        self.gui_settings = self.load_config("settings")
+        self.ai_models = self.gui_settings.get("sentiment_matching", {}).get("model_configs", {})
         
     def reload_configs(self):
         """重新加载配置（用于热键更新后）"""
@@ -75,88 +78,37 @@ class ConfigLoader:
         # 重新加载进程白名单
         self.process_whitelist = self.load_config("process_whitelist")
         # 重新加载GUI设置
-        self.gui_settings = self.load_config("gui_settings")
+        self.gui_settings = self.load_config("settings")
 
     def load_config(self, config_type: str, *args) -> Any:
         """
         通用配置加载函数
         
         Args:
-            config_type: 配置类型，支持: 'model_configs', 'chara_meta', 'text_configs', 
-                        'keymap', 'process_whitelist', 'gui_settings'
+            config_type: 配置类型，支持: 'chara_meta', 'text_configs', 
+                        'keymap', 'process_whitelist', 'settings'
             *args: 额外参数，如平台类型或配置键名
         
         Returns:
             配置数据
         """
-        config_handlers = {
-            'model_configs': self._load_model_configs,
-            'chara_meta': self._load_chara_meta,
-            'text_configs': self._load_text_configs,
-            'keymap': self._load_keymap,
-            'process_whitelist': self._load_process_whitelist,
-            'gui_settings': self._load_gui_settings,
-        }
-        
-        if config_type not in config_handlers:
+        config_list = ["chara_meta", "text_configs", "keymap", "process_whitelist", "settings"]
+        if config_type not in config_list:
             raise ValueError(f"不支持的配置类型: {config_type}")
         
-        return config_handlers[config_type](*args)
-    
-    def _load_model_configs(self) -> Dict[str, Any]:
-        """加载模型配置"""
-        settings = self._load_gui_settings()
-        return settings.get("sentiment_matching", {}).get("model_configs", {})
-    
-    def _load_chara_meta(self):
-        """加载角色元数据"""
-        config = self._load_yaml_file("chara_meta.yml")
-        return config.get("mahoshojo") if config else None
-    
-    def _load_text_configs(self):
-        """加载文本配置"""
-        config = self._load_yaml_file("text_configs.yml")
-        return config.get("text_configs") if config else None
-    
-    def _load_keymap(self):
-        """加载快捷键映射"""
-        # 尝试加载配置文件
-        config = self._load_yaml_file("keymap.yml")
-        
-        # 如果文件不存在或加载失败，使用默认配置并保存
+        # 加载配置文件
+        config = self._load_yaml_file(f"{config_type}.yml")
+        if config_type in ["keymap", "process_whitelist"]:
+            config = config.get(self.platform, {})
+
         if config is None:
-            default_config = self._get_default_keymap()
-            self._save_yaml_file("keymap.yml", default_config)
-            return default_config.get(self.platform, {})
-        
-        return config.get(self.platform, {})
-    
-    def _load_process_whitelist(self):
-        """加载进程白名单"""
-        config = self._load_yaml_file("process_whitelist.yml")
-        return config.get(self.platform, []) if config else []
-    
-    def _load_gui_settings(self):
-        """加载GUI设置"""
-        default_settings = self._get_default_gui_settings()
-        
-        # 尝试加载配置文件
-        config = self._load_yaml_file("settings.yml")
-        if config is None:
-            return default_settings
-        
-        # 合并默认设置和加载的设置
-        merged_settings = default_settings.copy()
-        if config:
-            merged_settings.update(config)
-            
-            # 合并嵌套配置
-            for key in ["sentiment_matching", "image_compression"]:
-                if key in config:
-                    merged_settings[key].update(config[key])
-        
-        return merged_settings
-    
+            # 获取默认配置（gui和keymap）
+            if config_type in ["settings", "keymap"]:
+                print(f"警告：{config_type}.yml 不存在，使用默认配置")
+                return self._get_default_gui_settings() if config_type == "settings" else self._get_default_keymap()
+        else:
+            return config
+
     def _load_yaml_file(self, filename: str) -> Optional[Dict[str, Any]]:
         """通用YAML文件加载函数"""
         filepath = get_resource_path(os.path.join("config", filename))
@@ -195,7 +147,7 @@ class ConfigLoader:
                 "prev_emotion": "ctrl+shift+u",
                 "next_background": "ctrl+shift+k",
                 "prev_background": "ctrl+shift+i",
-                "toggle_listener": "alt+ctrl+p",
+                "toggle_listener": "ctrl+alt+p",
                 "character_1": "ctrl+1",
                 "character_2": "ctrl+2",
                 "character_3": "ctrl+3",
@@ -211,7 +163,7 @@ class ConfigLoader:
                 "prev_emotion": "cmd+shift+u",
                 "next_background": "cmd+shift+k",
                 "prev_background": "cmd+shift+i",
-                "toggle_listener": "alt+cmd+p",
+                "toggle_listener": "cmd+alt+p",
                 "character_1": "cmd+1",
                 "character_2": "cmd+2",
                 "character_3": "cmd+3",
@@ -247,7 +199,7 @@ class ConfigLoader:
     def get_available_models(self) -> Dict[str, Dict[str, Any]]:
         """获取可用模型配置"""
         # 从配置文件读取模型配置
-        model_configs = self._load_model_configs()
+        model_configs = self.gui_settings.get("sentiment_matching", {}).get("model_configs", {})
         
         # 构建模型信息字典
         available_models = {}
@@ -326,46 +278,12 @@ class ConfigLoader:
         # 保存回文件
         return self._save_yaml_file("settings.yml", merged_settings)
 
-    @staticmethod
-    def validate_hotkey_format(hotkey):
-        """验证快捷键格式的有效性"""
-        valid_modifiers = ['ctrl', 'alt', 'shift', 'win', 'cmd']
-        valid_keys = [
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 
-            'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-            '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-            'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12',
-            'space', 'tab', 'enter', 'esc', 'backspace', 'delete', 'insert', 'home', 'end',
-            'pageup', 'pagedown', 'up', 'down', 'left', 'right'
-        ]
-        
-        if not hotkey:
-            return True  # 空快捷键允许
-        
-        hotkey = hotkey.strip().lower()
-        
-        # 检查格式：modifier+key 或 modifier+modifier+key
-        parts = hotkey.split('+')
-        if len(parts) < 2 or len(parts) > 3:
-            return False, f"快捷键 '{hotkey}' 格式无效，应为：修饰键+按键"
-        
-        # 检查修饰键
-        for modifier in parts[:-1]:
-            if modifier not in valid_modifiers:
-                return False, f"快捷键 '{hotkey}' 包含无效修饰键 '{modifier}'"
-        
-        # 检查主按键
-        main_key = parts[-1]
-        if main_key not in valid_keys:
-            return False, f"快捷键 '{hotkey}' 包含无效按键 '{main_key}'"
-        
-        return True, ""
-
 class AppConfig:
     """应用配置类"""
     
     def __init__(self, base_path=None):
-        self.BOX_RECT = ((728, 355), (2339, 800))  # 文本框区域坐标
+        # self.BOX_RECT = ((728, 355), (2339, 800))  # 文本框区域坐标
+        self.BOX_RECT = ((760, 355), (2339, 800))
         self.KEY_DELAY = 0.05  # 按键延迟
         self.AUTO_PASTE_IMAGE = True
         self.AUTO_SEND_IMAGE = True
