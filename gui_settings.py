@@ -20,7 +20,7 @@ class SettingsWindow:
         # 创建窗口
         self.window = tk.Toplevel(parent)
         self.window.title("设置")
-        self.window.geometry("500x750")
+        self.window.geometry("450x675")
         self.window.resizable(False, False)
         self.window.transient(parent)
         self.window.grab_set()
@@ -68,13 +68,48 @@ class SettingsWindow:
         ttk.Button(button_frame, text="应用", command=self._on_apply).pack(
             side=tk.RIGHT, padx=5
         )
-
     def _setup_general_tab(self, parent):
-        """设置常规设置标签页"""
+        """设置常规设置标签页 - 添加滚动功能并修复滚动范围问题"""
+        # 创建滚动容器
+        canvas = tk.Canvas(parent, highlightthickness=0)
+        scrollbar = ttk.Scrollbar(parent, orient=tk.VERTICAL, command=canvas.yview)
+        
+        # 创建可滚动框架
+        scrollable_frame = ttk.Frame(canvas)
+        
+        # 将 scrollable_frame 放入 canvas 中，使用 anchor="nw" 确保从左上角开始
+        canvas_frame = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        
+        # 配置 scrollregion 和宽度
+        def configure_scroll_region(event):
+            # 只在 scrollable_frame 高度大于 canvas 时才设置 scrollregion
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        def configure_frame_width(event):
+            # 设置 scrollable_frame 宽度为 canvas 宽度减去滚动条宽度
+            canvas_width = canvas.winfo_width()
+            if canvas_width > scrollbar.winfo_width():
+                # 减去滚动条宽度和一些边距
+                frame_width = canvas_width - scrollbar.winfo_width() - 10
+                canvas.itemconfig(canvas_frame, width=frame_width)
+        
+        # 绑定事件
+        scrollable_frame.bind("<Configure>", configure_scroll_region)
+        canvas.bind("<Configure>", configure_frame_width)
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # 布局滚动组件
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # 添加内部边距，防止内容紧贴边缘
+        content_frame = ttk.Frame(scrollable_frame, padding="10")
+        content_frame.pack(fill=tk.BOTH, expand=True)
+        
         # 字体设置
-        font_frame = ttk.LabelFrame(parent, text="字体设置", padding="10")
-        font_frame.pack(fill=tk.X, pady=5)
-
+        font_frame = ttk.LabelFrame(content_frame, text="字体设置", padding="10")
+        font_frame.pack(fill=tk.X, pady=5, padx=5)
+        
         ttk.Label(font_frame, text="对话框字体:").grid(row=0, column=0, sticky=tk.W, pady=5)
         
         # 获取可用字体列表
@@ -87,21 +122,19 @@ class SettingsWindow:
             font_frame,
             textvariable=self.font_family_var,
             values=available_fonts,
-            state="readonly",
-            width=20,
+            state="readonly"
         )
-        font_combo.grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
-        font_combo.bind("<<ComboboxSelected>>", self._on_setting_changed)
-
+        font_combo.grid(row=0, column=1, sticky=tk.EW, pady=5, padx=5)
+        
         # 字号设置
         ttk.Label(font_frame, text="对话框字号:").grid(
             row=1, column=0, sticky=tk.W, pady=5
         )
         self.font_size_var = tk.IntVar(value=CONFIGS.gui_settings.get("font_size", 12))
         font_size_spin = ttk.Spinbox(
-            font_frame, textvariable=self.font_size_var, from_=8, to=120, width=10
+            font_frame, textvariable=self.font_size_var, from_=8, to=120
         )
-        font_size_spin.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
+        font_size_spin.grid(row=1, column=1, sticky=tk.EW, pady=5, padx=5)
         font_size_spin.bind("<KeyRelease>", self._on_setting_changed)
         font_size_spin.bind("<<Increment>>", self._on_setting_changed)
         font_size_spin.bind("<<Decrement>>", self._on_setting_changed)
@@ -111,24 +144,23 @@ class SettingsWindow:
                 font=("", 8), foreground="gray").grid(
             row=2, column=0, columnspan=2, sticky=tk.W, pady=2
         )
-
+        
         # 文字颜色设置
         ttk.Label(font_frame, text="文字颜色:").grid(
             row=3, column=0, sticky=tk.W, pady=5
         )
         
         color_frame = ttk.Frame(font_frame)
-        color_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
+        color_frame.grid(row=3, column=1, sticky=tk.EW, pady=5, padx=5)
         
         self.text_color_var = tk.StringVar(
             value=CONFIGS.gui_settings.get("text_color", "#FFFFFF")
         )
         color_entry = ttk.Entry(
             color_frame,
-            textvariable=self.text_color_var,
-            width=10
+            textvariable=self.text_color_var
         )
-        color_entry.pack(side=tk.LEFT, padx=(0, 5))
+        color_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         color_entry.bind("<KeyRelease>", self._on_setting_changed)
         
         # 颜色预览标签
@@ -140,31 +172,30 @@ class SettingsWindow:
             width=3
         )
         self.color_preview_label.pack(side=tk.LEFT)
-
+        
         # 绑定变量变化更新预览
         def on_color_change(*args):
-                self._update_color_preview()
-                self._on_setting_changed()
-            
+            self._update_color_preview()
+            self._on_setting_changed()
+        
         self.text_color_var.trace_add("write", on_color_change)
-
-                # 强调颜色设置
+        
+        # 强调颜色设置
         ttk.Label(font_frame, text="强调颜色:").grid(
             row=4, column=0, sticky=tk.W, pady=5
         )
         
         bracket_color_frame = ttk.Frame(font_frame)
-        bracket_color_frame.grid(row=4, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
+        bracket_color_frame.grid(row=4, column=1, sticky=tk.EW, pady=5, padx=5)
         
         self.bracket_color_var = tk.StringVar(
             value=CONFIGS.gui_settings.get("bracket_color", "#EF4F54")
         )
         bracket_color_entry = ttk.Entry(
             bracket_color_frame,
-            textvariable=self.bracket_color_var,
-            width=10
+            textvariable=self.bracket_color_var
         )
-        bracket_color_entry.pack(side=tk.LEFT, padx=(0, 5))
+        bracket_color_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         bracket_color_entry.bind("<KeyRelease>", self._on_setting_changed)
         
         # 强调颜色预览标签
@@ -179,9 +210,9 @@ class SettingsWindow:
         
         # 绑定变量变化更新预览
         def on_bracket_color_change(*args):
-                self._update_bracket_color_preview()
-                self._on_setting_changed()
-            
+            self._update_bracket_color_preview()
+            self._on_setting_changed()
+        
         self.bracket_color_var.trace_add("write", on_bracket_color_change)
         
         # 强调颜色说明
@@ -190,19 +221,14 @@ class SettingsWindow:
                 font=("", 8), foreground="gray").grid(
             row=5, column=0, columnspan=2, sticky=tk.W, pady=2
         )
-
+        
         # 获取情感匹配设置
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
         if sentiment_settings.get("display", False):
             # 情感匹配设置
-            sentiment_frame = ttk.LabelFrame(parent, text="情感匹配设置", padding="10")
-            sentiment_frame.pack(fill=tk.X, pady=5)
-
-            # 启用情感匹配
-            self.sentiment_enabled_var = tk.BooleanVar(
-                value=sentiment_settings.get("enabled", False)
-            )
-
+            sentiment_frame = ttk.LabelFrame(content_frame, text="情感匹配设置", padding="10")
+            sentiment_frame.pack(fill=tk.X, pady=5, padx=5)
+        
             # AI模型选择
             ttk.Label(sentiment_frame, text="AI模型:").grid(
                 row=1, column=0, sticky=tk.W, pady=5
@@ -217,41 +243,41 @@ class SettingsWindow:
                 sentiment_frame,
                 textvariable=self.ai_model_var,
                 values=model_names,
-                state="readonly",
-                width=15
+                state="readonly"
             )
-            ai_model_combo.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
+            ai_model_combo.grid(row=1, column=1, sticky=tk.EW, pady=5, padx=5)
             ai_model_combo.bind("<<ComboboxSelected>>", self._setup_model_parameters)
-
+        
             # 连接测试按钮
             self.test_btn = ttk.Button(
                 sentiment_frame,
                 text="测试连接",
-                command=self._test_ai_connection,
-                width=10
+                command=self._test_ai_connection
             )
-            self.test_btn.grid(row=1, column=2, sticky=tk.W, pady=5, padx=5)
-
+            self.test_btn.grid(row=1, column=2, sticky=tk.E, pady=5, padx=5)
+        
             # 模型参数框架 - 显示所有参数
             self.params_frame = ttk.Frame(sentiment_frame)
-            self.params_frame.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
+            self.params_frame.grid(row=2, column=0, columnspan=3, sticky=tk.EW, pady=5)
             
             # 初始化参数显示
             self._setup_model_parameters()
-
+        
             # 情感匹配说明
             ttk.Label(sentiment_frame, 
                     text="注：在主界面点击情感匹配以进行连接，点击测试连接按钮也行", 
                     font=("", 8), foreground="gray").grid(
                 row=0, column=0, columnspan=3, sticky=tk.W, pady=2
             )
-
+        
+            # 配置列权重
             sentiment_frame.columnconfigure(1, weight=1)
-
+            sentiment_frame.columnconfigure(2, weight=0)  # 按钮列不扩展
+        
         # 图像压缩设置
-        compression_frame = ttk.LabelFrame(parent, text="图像压缩设置", padding="10")
-        compression_frame.pack(fill=tk.X, pady=5)
-
+        compression_frame = ttk.LabelFrame(content_frame, text="图像压缩设置", padding="10")
+        compression_frame.pack(fill=tk.X, pady=5, padx=5)
+        
         # 像素减少压缩
         self.pixel_reduction_var = tk.BooleanVar(
             value=CONFIGS.gui_settings.get("image_compression", {}).get("pixel_reduction_enabled", False)
@@ -263,14 +289,14 @@ class SettingsWindow:
             command=self._on_setting_changed
         )
         pixel_reduction_cb.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
-
+        
         # 像素减少比例滑条
         ttk.Label(compression_frame, text="像素削减比例:").grid(
             row=3, column=0, sticky=tk.W, pady=5
         )
         
         pixel_frame = ttk.Frame(compression_frame)
-        pixel_frame.grid(row=3, column=1, sticky=(tk.W, tk.E), pady=5, padx=5)
+        pixel_frame.grid(row=3, column=1, sticky=tk.EW, pady=5, padx=5)
         
         self.pixel_reduction_ratio_var = tk.IntVar(
             value=CONFIGS.gui_settings.get("image_compression", {}).get("pixel_reduction_ratio", 50)
@@ -280,24 +306,28 @@ class SettingsWindow:
             from_=10,
             to=90,
             variable=self.pixel_reduction_ratio_var,
-            orient=tk.HORIZONTAL,
-            length=200
+            orient=tk.HORIZONTAL
         )
         pixel_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
         pixel_scale.bind("<ButtonRelease-1>", self._on_setting_changed)
         
         self.pixel_value_label = ttk.Label(pixel_frame, text=f"{self.pixel_reduction_ratio_var.get()}%")
-        self.pixel_value_label.pack(side=tk.RIGHT, padx=5)
+        self.pixel_value_label.pack(side=tk.LEFT, padx=5)
         
         # 绑定变量变化更新标签
         self.pixel_reduction_ratio_var.trace_add("write", self._update_pixel_label)
-
+        
         # 压缩说明
         ttk.Label(compression_frame, 
                 text="注：压缩质量影响PNG输出质量，像素减少通过降低BMP图像分辨率来减小文件大小", 
                 font=("", 8), foreground="gray").grid(
             row=4, column=0, columnspan=2, sticky=tk.W, pady=2
         )
+        
+        # 配置列权重，使内容可以水平扩展
+        font_frame.columnconfigure(1, weight=1)
+        if sentiment_settings.get("display", False):
+            compression_frame.columnconfigure(1, weight=1)
 
 
     def _setup_hotkey_tab(self, parent):
@@ -313,13 +343,12 @@ class SettingsWindow:
 
         # 创建窗口并设置合适的宽度
         canvas_frame = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        
+
         # 更新函数确保框架宽度正确
         def update_scrollable_frame_width(event=None):
             # 获取canvas当前宽度并减去滚动条宽度
             canvas_width = canvas.winfo_width()
             if canvas_width > 10:  # 确保有有效宽度
-                # 设置框架宽度为canvas宽度减去一些边距
                 canvas.itemconfig(canvas_frame, width=canvas_width - 10)
         
         canvas.bind("<Configure>", update_scrollable_frame_width)
@@ -656,9 +685,8 @@ class SettingsWindow:
                         else:
                             key_str = key_obj.name
                 else:
-                    # 处理普通字符键 - 这里要特别处理控制字符
+                    # 处理普通字符键 - 修复Ctrl+数字的问题
                     if hasattr(key_obj, 'char') and key_obj.char:
-                        # 检查是否是控制字符（ASCII 0-31）
                         char_val = key_obj.char
                         if isinstance(char_val, str) and len(char_val) == 1:
                             code = ord(char_val)
@@ -666,6 +694,33 @@ class SettingsWindow:
                             if 1 <= code <= 26:
                                 # 转换为对应字母
                                 key_str = chr(code - 1 + ord('a'))
+                            # 修复：Ctrl+0 到 Ctrl+9 对应 0-9 (ASCII 0-9对应Ctrl+@到Ctrl+])
+                            elif code == 0:  # Ctrl+@ 或 Ctrl+`
+                                key_str = '0'
+                            elif code < 32:  # 其他控制字符
+                                # 检查是否是数字控制字符 (Ctrl+1 到 Ctrl+9 对应 ASCII 1-9)
+                                if 1 <= code <= 9:
+                                    key_str = str(code)
+                                elif code == 27:  # Ctrl+[
+                                    key_str = '['
+                                elif code == 28:  # Ctrl+\
+                                    key_str = '\\'
+                                elif code == 29:  # Ctrl+]
+                                    key_str = ']'
+                                elif code == 30:  # Ctrl+^
+                                    key_str = '^'
+                                elif code == 31:  # Ctrl+_
+                                    key_str = '_'
+                                else:
+                                    key_str = None
+                            # 修复：Ctrl+数字键的直接映射
+                            elif 48 <= code <= 57:  # 数字 0-9
+                                # 检查是否按下了Ctrl键（通过key_combo中是否已有<ctrl>）
+                                if '<ctrl>' in key_combo:
+                                    # 直接使用数字字符
+                                    key_str = char_val
+                                else:
+                                    key_str = char_val.lower() if char_val.isalpha() else char_val
                             elif code >= 32:  # 可打印字符
                                 key_str = char_val.lower() if char_val.isalpha() else char_val
                             else:
@@ -675,16 +730,22 @@ class SettingsWindow:
                     else:
                         # 没有字符属性，尝试获取其他表示
                         try:
-                            key_repr = str(key_obj)
-                            if "'" in key_repr:
-                                key_str = key_repr.strip("'")
-                                # 如果是单字符且为控制字符，特殊处理
-                                if len(key_str) == 1:
-                                    code = ord(key_str)
-                                    if 1 <= code <= 26:
-                                        key_str = chr(code - 1 + ord('a'))
+                            # 尝试获取虚拟键码
+                            if hasattr(key_obj, 'vk'):
+                                vk = key_obj.vk
+                                # 检查是否是数字键 (VK_0 到 VK_9)
+                                if 48 <= vk <= 57:  # VK_0 到 VK_9
+                                    # 检查是否按下了Ctrl键
+                                    if '<ctrl>' in key_combo:
+                                        key_str = str(vk - 48)  # 转换为数字字符
+                                    else:
+                                        key_str = str(vk - 48)
+                                elif 65 <= vk <= 90:  # VK_A 到 VK_Z
+                                    key_str = chr(vk).lower()
+                                else:
+                                    key_str = str(key_obj)
                             else:
-                                key_str = key_repr.replace('Key.', '')
+                                key_str = str(key_obj)
                         except:
                             key_str = str(key_obj)
                 
@@ -808,7 +869,7 @@ class SettingsWindow:
         else:
             self.test_btn.config(text="连接失败")
             # 连接失败时，禁用情感匹配
-            self.sentiment_enabled_var.set(False)
+            # self.sentiment_enabled_var.set(False)
             self._on_setting_changed()
             # 2秒后恢复文本
             self.window.after(2000, lambda: self.test_btn.config(text="测试连接"))
@@ -864,7 +925,7 @@ class SettingsWindow:
             if "sentiment_matching" not in CONFIGS.gui_settings:
                 CONFIGS.gui_settings["sentiment_matching"] = {}
             
-            CONFIGS.gui_settings["sentiment_matching"]["enabled"] = self.sentiment_enabled_var.get()
+            # CONFIGS.gui_settings["sentiment_matching"]["enabled"] = self.sentiment_enabled_var.get()
             CONFIGS.gui_settings["sentiment_matching"]["ai_model"] = self.ai_model_var.get()
             
             # 保存模型配置

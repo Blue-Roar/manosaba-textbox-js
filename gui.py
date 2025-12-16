@@ -6,9 +6,9 @@ import threading
 
 from core import ManosabaCore
 from gui_settings import SettingsWindow
+from gui_about import AboutWindow
 from gui_hotkeys import HotkeyManager
 from gui_components import PreviewManager, StatusManager
-from load_utils import get_preload_manager
 from config import CONFIGS
 
 class ManosabaGUI:
@@ -29,6 +29,7 @@ class ManosabaGUI:
         self.hotkey_manager = HotkeyManager(self)
         self.preview_manager = PreviewManager(self)
         self.status_manager = StatusManager(self)
+        self.about_window = None  # 关于窗口实例
 
         # 图片生成状态
         self.is_generating = False
@@ -245,7 +246,13 @@ class ManosabaGUI:
         # 创建一个单独的设置按钮，而不是下拉菜单
         menubar.add_command(label="设置", command=self.open_settings)
         # menubar.add_command(label="布局", command=self.open_layout) #(编辑对话框的角色名字位置和字号及颜色之类的)
-        # menubar.add_command(label="关于", command=self.open_abouts) #(因为没想到写什么，先留个位)
+        menubar.add_command(label="关于", command=self.open_about)
+
+    def open_about(self):
+        """打开关于窗口"""
+        if not self.about_window:
+            self.about_window = AboutWindow(self.root)
+        self.about_window.open()
 
     def open_settings(self):
         """打开设置窗口"""

@@ -5,7 +5,6 @@ import yaml
 from sys import platform
 from path_utils import get_base_path, get_resource_path, ensure_path_exists
 
-
 class ConfigLoader:
     """配置加载器"""
     
@@ -31,6 +30,11 @@ class ConfigLoader:
         # 状态变量(为None时为随机选择,否则为手动选择)
         self.selected_emotion = None
         self.selected_background = None
+
+        # 加载版本信息
+        self.version_info = self.load_version_info()
+        # 设置版本号属性
+        self.version = self.version_info["version"] #没有就直接报错吧
 
         #配置加载
         self.mahoshojo = {}
@@ -308,6 +312,47 @@ class ConfigLoader:
         # 直接保存当前配置
         return self._save_yaml_file("settings.yml", self.gui_settings)
 
+    def load_version_info(self) -> Dict[str, Any]:
+        """加载版本信息"""
+        try:
+            return self._load_yaml_file("version.yml")
+        except Exception as e:
+            print(f"加载版本信息失败: {e}")
+            return {"version": "0.0.0"}
+
+    def get_program_info(self) -> Dict[str, Any]:
+        """获取程序信息"""
+        program_info = self.version_info["program"]
+        return {
+            "name": program_info["name"],
+            "version": self.version,
+            "author": program_info["author"],
+            "description": program_info["description"],
+            "github": program_info["github"],
+            "origin_project": program_info["origin_project"]
+        }
+    
+    def get_contact_info(self) -> Dict[str, str]:
+        """获取联系信息"""
+        return self.version_info.get("contact", {})
+    
+    def get_version_history(self) -> list:
+        """获取版本历史"""
+        return self.version_info.get("history", [])
+    
+    def get_version_info(self):
+        """获取版本信息"""
+        version_config = self.load_config("version")
+        if version_config:
+            return version_config
+        else:
+            return {
+                "version": self.version,
+                "release_date": "未知",
+                "description": "魔裁文本框生成器",
+                "author": "YangQwQ",
+                "github": "https://github.com/YangQwQ/ManosabaTextbox-GUI"
+            }
 
 class AppConfig:
     """应用配置类"""
