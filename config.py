@@ -2,6 +2,7 @@
 import os
 from typing import Dict, Any, Optional
 import yaml
+import json
 from sys import platform
 from path_utils import get_base_path, get_resource_path, ensure_path_exists
 
@@ -19,9 +20,18 @@ class StyleConfig:
         self.bracket_color = '#EF4F54'
         self.use_character_color = False  # 是否使用角色颜色作为强调色
         
+        # 阴影设置
+        self.shadow_color = '#000000'  # 阴影颜色
+        self.shadow_offset_x = 4  # 阴影X偏移
+        self.shadow_offset_y = 4  # 阴影Y偏移
+        
+        # 文本框区域设置
+        self.textbox_x = 760  # 文本框左上角X坐标
+        self.textbox_y = 355  # 文本框左上角Y坐标
+        self.textbox_width = 1579  # 文本框宽度 (2339-760)
+        self.textbox_height = 445  # 文本框高度 (800-355)
+        
         # 文本框文字偏移和对齐
-        self.text_offset_x = 0
-        self.text_offset_y = 0
         self.text_align = "left"  # left, center, right
         self.text_valign = "top"  # top, middle, bottom
         
@@ -120,7 +130,7 @@ class ConfigLoader:
         # 加载版本信息
         self.version_info = self.load_version_info()
         # 设置版本号属性
-        self.version = self.version_info["version"] #没有就直接报错吧
+        self.version = self.version_info["version"] # 需要存在version.yml文件
 
         # 配置加载
         self.mahoshojo = {}
@@ -146,7 +156,7 @@ class ConfigLoader:
             for key, value in style_data.items():
                 if hasattr(self.style, key):
                     setattr(self.style, key, value)
-                    
+
             # 如果使用角色颜色作为强调色，更新强调色
             if self.style.use_character_color:
                 self._update_bracket_color_from_character()
@@ -210,44 +220,6 @@ class ConfigLoader:
             font_color = first_config.get("font_color", (255, 255, 255))
             # 将RGB转换为十六进制
             self.style.bracket_color = f"#{font_color[0]:02x}{font_color[1]:02x}{font_color[2]:02x}"
-    
-    def save_style_configs(self):
-        """保存样式配置到文件"""
-        return self._save_yaml_file("styles.yml", self.style_configs)
-    
-    def create_style(self, style_name: str, based_on: str = "default"):
-        """创建新样式"""
-        if style_name in self.style_configs:
-            return False  # 样式已存在
-        
-        if based_on in self.style_configs:
-            # 基于现有样式创建
-            new_style = self.style_configs[based_on].copy()
-        else:
-            # 创建默认样式
-            new_style = {}
-            # 复制默认样式的所有属性
-            default_style = StyleConfig()
-            for key in default_style.__dict__:
-                new_style[key] = getattr(default_style, key)
-        
-        self.style_configs[style_name] = new_style
-        return self.save_style_configs()
-    
-    def delete_style(self, style_name: str):
-        """删除样式"""
-        if style_name == "default":
-            return False  # 不能删除默认样式
-        
-        if style_name in self.style_configs:
-            del self.style_configs[style_name]
-            
-            # 如果删除的是当前样式，切换到默认样式
-            if self.current_style == style_name:
-                self.apply_style("default")
-                
-            return self.save_style_configs()
-        return False
 
     def _get_background_count(self) -> int:
         """动态获取背景图片数量"""
@@ -374,6 +346,10 @@ class ConfigLoader:
 
         if config_type == "settings":
             return {
+                "preloading": {
+                "preload_character": True,
+                "preload_background": True
+                },
                 "image_compression": {
                     "pixel_reduction_enabled": True,
                     "pixel_reduction_ratio": 40
@@ -514,6 +490,16 @@ class ConfigLoader:
         # 加载现有配置
         keymap_data = self._load_yaml_file("keymap.yml") or {self.platform: self._get_default_setting("keymap")}
         
+        # 检查是否有变化
+        current_hotkeys = keymap_data.get(self.platform, {})
+        have_change=False
+        for key,value in new_hotkeys.items():
+            if current_hotkeys.get(key,None) != value:
+                have_change = True
+                break
+        if not have_change:
+            return False
+
         # 合并新的快捷键设置到当前平台
         if self.platform not in keymap_data:
             keymap_data[self.platform] = {}
@@ -521,22 +507,66 @@ class ConfigLoader:
 
         # 保存回文件
         return self._save_yaml_file("keymap.yml", keymap_data)
-    
+
     def save_process_whitelist(self, processes):
         """保存进程白名单"""
         # 加载现有配置
         existing_data = self._load_yaml_file("process_whitelist.yml") or {}
         
+        # 检查是否有变化
+        current_processes = existing_data.get(self.platform, [])
+        if sorted(processes) == sorted(current_processes):
+            return False
+        
         # 更新当前平台的白名单
         existing_data[self.platform] = processes
-        
+
         # 保存回文件
         return self._save_yaml_file("process_whitelist.yml", existing_data)
         
     def save_gui_settings(self):
-        """保存GUI设置到settings.yml"""
-        # 直接保存当前配置
-        return self._save_yaml_file("settings.yml", self.gui_settings)
+        """保存GUI设置到settings.yml（仅更新变化的部分）"""
+        # 加载现有配置
+        filepath = get_resource_path(os.path.join("config", "settings.yml"))
+        
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as f:
+                existing_data = yaml.safe_load(f) or {}
+        else:
+            existing_data = {}
+        
+        # 没有变化就返回个False
+        if json.dumps(existing_data, sort_keys=True) == json.dumps(self.gui_settings, sort_keys=True):
+            return False
+        
+        # 递归合并新设置到现有数据中
+        self._merge_dicts_partial(existing_data, self.gui_settings)
+        
+        # 保存回文件
+        ensure_path_exists(filepath)
+        with open(filepath, 'w', encoding='utf-8') as f:
+            yaml.dump(existing_data, f, allow_unicode=True, default_flow_style=False)
+        
+        return True
+        
+    def _merge_dicts_partial(self, target: Dict, source: Dict):
+        """部分合并字典，只更新有变化的部分"""
+        for key, value in source.items():
+            if key in target and isinstance(target[key], dict) and isinstance(value, dict):
+                # 递归合并子字典
+                self._merge_dicts_partial(target[key], value)
+            else:
+                # 直接赋值（覆盖或新增）
+                target[key] = value
+
+    def save_style_configs(self):
+        """保存样式配置到文件"""
+        # 检查是否有变化
+        existing_data = self._load_yaml_file("styles.yml") or {}
+        if self.style_configs == existing_data:
+            return True  # 没有变化，不保存
+    
+        return self._save_yaml_file("styles.yml", self.style_configs)
 
     def load_version_info(self) -> Dict[str, Any]:
         """加载版本信息"""
@@ -566,71 +596,14 @@ class ConfigLoader:
         """获取版本历史"""
         return self.version_info.get("history", [])
     
-    def get_version_info(self):
-        """获取版本信息"""
-        version_config = self.load_config("version")
-        if version_config:
-            return version_config
-        else:
-            return {
-                "version": self.version,
-                "release_date": "未知",
-                "description": "魔裁文本框生成器",
-                "author": "YangQwQ",
-                "github": "https://github.com/YangQwQ/ManosabaTextbox-GUI"
-            }
-
     def get_sorted_image_components(self):
         """获取排序后的图片组件列表（按图层顺序）"""
         return sorted(self.style.image_components, key=lambda x: x.get("layer", 0))
-
-    def get_component_by_type(self, component_type):
-        """根据类型获取组件配置"""
-        for component in self.style.image_components:
-            if component.get("type") == component_type:
-                return component
-        return None
-
-    def update_component(self, component_type, updates):
-        """更新指定类型的组件配置"""
-        for i, component in enumerate(self.style.image_components):
-            if component.get("type") == component_type:
-                self.style.image_components[i].update(updates)
-                return True
-        return False
-
-    def add_extra_component(self, component_config):
-        """添加额外组件"""
-        # 确保有唯一ID
-        if "id" not in component_config:
-            component_config["id"] = f"extra_{len([c for c in self.style.image_components if c.get('type') == 'extra'])}"
-        
-        # 设置默认类型为extra
-        if "type" not in component_config:
-            component_config["type"] = "extra"
-        
-        self.style.image_components.append(component_config)
-        return True
-
-    def remove_extra_component(self, component_id):
-        """删除额外组件"""
-        self.style.image_components = [
-            c for c in self.style.image_components 
-            if not (c.get("type") == "extra" and c.get("id") == component_id)
-        ]
-        return True
-
-    def get_extra_components(self):
-        """获取所有额外组件"""
-        return [c for c in self.style.image_components if c.get("type") == "extra"]
-
+    
 class AppConfig:
     """应用配置类"""
-    
     def __init__(self, base_path=None):
-        # self.BOX_RECT = ((728, 355), (2339, 800))  # 文本框区域坐标
-        self.BOX_RECT = ((760, 355), (2339, 800))
-        self.BOX_HEIGHT=self.BOX_RECT[1][1]-self.BOX_RECT[0][1]
+        # 使用样式配置中的文本框区域
         self.KEY_DELAY = 0.05  # 按键延迟
         self.AUTO_PASTE_IMAGE = True
         self.AUTO_SEND_IMAGE = True

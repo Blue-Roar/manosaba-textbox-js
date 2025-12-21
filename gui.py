@@ -55,6 +55,15 @@ class ManosabaGUI:
 
     def check_preload_status(self):
         """检查预加载状态并更新界面"""
+        # 获取预加载设置
+        preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+        preload_character = preloading_settings.get("preload_character", True)
+        
+        if not preload_character:
+            # 如果预加载已禁用，直接显示就绪状态
+            self.update_status("就绪 - 角色预加载已禁用")
+            return
+        
         # 从core的预加载管理器获取状态
         preload_manager = self.core.preload_manager
         preload_status = preload_manager.get_preload_status()
@@ -574,7 +583,7 @@ class ManosabaGUI:
                 self.root.after(0, lambda: self.on_generation_complete(error_msg))
             finally:
                 self.is_generating = False
-        thread = threading.Thread(target=generate_in_thread, daemon=True)
+        thread = threading.Thread(target=generate_in_thread, daemon=True, name="GenerateImg")
         thread.start()
 
     def on_generation_complete(self, result):
@@ -584,7 +593,8 @@ class ManosabaGUI:
 
     def update_status(self, message: str):
         """更新状态栏"""
-        self.status_manager.update_status(message)
+        if hasattr(self,"status_manager"):
+            self.status_manager.update_status(message)
 
     def run(self):
         """运行 GUI"""

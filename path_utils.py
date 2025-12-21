@@ -39,30 +39,37 @@ def ensure_path_exists(file_path):
         os.makedirs(directory, exist_ok=True)
     return file_path
 
-def get_available_fonts():
-    """获取可用的字体列表"""
-    project_fonts = []
+def get_font_path(font_name: str) -> str:
+    """获取字体文件路径，支持多种格式"""
+    supported_formats = ['.ttf', '.otf', '.ttc', '.woff', '.woff2']
     
-    # 在打包环境中，优先查找程序旁边的assets/fonts文件夹
-    # 首先尝试程序目录下的assets/fonts
-    base_path = get_base_path()  # 使用get_base_path()而不是__file__
-    external_font_dir = os.path.join(base_path, "assets", "fonts")
+    # 尝试在assets/fonts目录下查找字体
+    for ext in supported_formats:
+        font_path = get_resource_path(os.path.join("assets", "fonts", f"{font_name}{ext}"))
+        if os.path.exists(font_path):
+            return font_path
     
-    # 如果外部字体目录存在，优先使用
-    if os.path.exists(external_font_dir):
-        for file in os.listdir(external_font_dir):
-            if file.lower().endswith(('.ttf', '.otf', '.ttc')):
-                project_fonts.append(file)  # 只返回字体文件名
+    # 如果所有格式都不存在，返回默认ttf格式的路径
+    return get_resource_path(os.path.join("assets", "fonts", f"{font_name}.ttf"))
+
+def get_available_fonts() -> list:
+    """获取可用字体列表，只返回文件名（不含扩展名）"""
+    fonts_dir = get_resource_path(os.path.join("assets", "fonts"))
+    font_files = []
     
-    # 如果外部目录没有找到字体，再尝试资源路径
-    if not project_fonts:
-        font_dir = get_resource_path(os.path.join("assets", "fonts"))
-        if os.path.exists(font_dir):
-            for file in os.listdir(font_dir):
-                if file.lower().endswith(('.ttf', '.otf', '.ttc')):
-                    project_fonts.append(file)  # 只返回字体文件名
+    if not os.path.exists(fonts_dir):
+        print(f"字体目录不存在: {fonts_dir}")
+        return []
     
-    return project_fonts
+    supported_formats = ('.ttf', '.otf', '.ttc', '.woff', '.woff2')
+    
+    for file in os.listdir(fonts_dir):
+        if file.lower().endswith(supported_formats):
+            # 只返回文件名（不含扩展名）
+            font_name = os.path.splitext(file)[0]
+            font_files.append(font_name)
+    
+    return sorted(set(font_files))
 
 def is_font_available(font_name: str) -> bool:
     """检查字体是否可用"""

@@ -5,13 +5,11 @@ import queue
 from PIL import ImageFont, Image
 from typing import Callable, Dict, Any, Optional
 
-from path_utils import get_resource_path
+from path_utils import get_resource_path, get_font_path
 from config import CONFIGS
 
-# 字体缓存
+# 资源缓存
 _font_cache = {}
-
-# 图片缓存
 _background_cache = {}  # 背景图片缓存（长期缓存）
 _character_cache = {}   # 角色图片缓存（可释放）
 _general_image_cache = {}  # 通用图片缓存
@@ -88,6 +86,16 @@ class PreloadManager:
                 # 等待有任务需要处理
                 character_name = self._task_queue.get(timeout=0.1)
                 
+                # 检查预加载设置是否启用
+                preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+                preload_character = preloading_settings.get("preload_character", True)
+                
+                if not preload_character:
+                    self.update_status(f"角色预加载已禁用，跳过 {character_name} 的预加载")
+                    # 标记任务完成
+                    self._task_queue.task_done()
+                    continue
+                
                 # 处理任务
                 self._preload_character_task(character_name)
                 
@@ -127,8 +135,6 @@ class PreloadManager:
                     self.update_status(f"角色 {character_name} 预加载被新任务中断")
                     return
                 
-                # 获取角色图片路径并预加载
-                overlay_path = get_character_path(character_name, emotion_index)
                 load_character_safe(character_name, emotion_index)
                 
                 # 更新已加载项目数
@@ -191,7 +197,7 @@ class PreloadManager:
                 self.update_status(f"背景图片预加载失败: {str(e)}")
         
         # 在后台线程中执行预加载
-        preload_thread = threading.Thread(target=preload_task, daemon=True)
+        preload_thread = threading.Thread(target=preload_task, daemon=True, name="PreloadBG")
         preload_thread.start()
     
     def get_preload_progress(self) -> float:
@@ -213,54 +219,25 @@ class PreloadManager:
                 'current_character': self._current_character
             }
     
-    def reset_status(self):
-        """重置预加载状态"""
-        with self._lock:
-            self._preload_status = {
-                'total_items': 0,
-                'loaded_items': 0,
-                'is_complete': False
-            }
-            self._current_character = None
-    
-    def stop_worker(self):
-        """停止工作线程（通常在程序退出时调用）"""
-        self._should_stop.set()
-        if self._worker_thread.is_alive():
-            self._worker_thread.join(timeout=1.0)
-
-# 创建全局预加载管理器实例
-_preload_manager = PreloadManager()
-
-# 简化后的函数定义
-def get_preload_manager() -> PreloadManager:
-    """获取预加载管理器实例"""
-    return _preload_manager
-
-
 #缓存字体
 def load_font_cached(font_name: str, size: int) -> ImageFont.FreeTypeFont:
-    """使用字体名称加载字体，支持打包环境"""
+    """使用字体名称加载字体，支持多种格式（TTF、OTF等）"""
     cache_key = f"{font_name}_{size}"
     if cache_key not in _font_cache:
-        # 构建字体路径
-        font_path = os.path.join("assets", "fonts", font_name)
-        resolved_font_path = get_resource_path(font_path)
+        # 获取字体路径（支持多种格式）
+        font_path = get_font_path(font_name)
         
-        if os.path.exists(resolved_font_path):
-            _font_cache[cache_key] = ImageFont.truetype(resolved_font_path, size=size)
+        if os.path.exists(font_path):
+            try:
+                _font_cache[cache_key] = ImageFont.truetype(font_path, size=size)
+            except Exception as e:
+                print(f"字体加载失败: {font_path}, 错误: {e}")
+                return ImageFont.truetype(font_path, size=size)
         else:
-            # 如果字体文件不存在，尝试使用默认字体
-            default_font_path = get_resource_path(os.path.join("assets", "fonts", "font3.ttf"))
-            if os.path.exists(default_font_path):
-                _font_cache[cache_key] = ImageFont.truetype(default_font_path, size=size)
-                print(f"警告：字体文件不存在，使用默认字体: {font_name}")
-            else:
-                # 如果默认字体也不存在，使用系统默认字体
-                _font_cache[cache_key] = ImageFont.load_default()
-                print(f"警告：字体文件不存在，使用系统默认字体: {font_name}")
+            print(f"字体文件不存在: {font_path}")
+            return ImageFont.truetype(font_path, size=size)
+    
     return _font_cache[cache_key]
-
 
 def load_image_cached(image_path: str) -> Image.Image:
     """通用图片缓存加载，支持透明通道"""
@@ -309,7 +286,6 @@ def load_background_safe(background_name: str, default_size: tuple = (800, 600),
         
         return default_img
 
-
 # 安全加载角色图片（文件不存在时返回默认值）
 def load_character_safe(character_name: str, emotion_index: int, default_size: tuple = (800, 600), default_color: tuple = (0, 0, 0, 0)) -> Image.Image:
     """安全加载角色图片，文件不存在时返回默认图片"""
@@ -325,7 +301,6 @@ def load_character_safe(character_name: str, emotion_index: int, default_size: t
                 
                 # 应用缩放
                 scale = CONFIGS.current_character.get("scale", 1.0)
-                # offset = CONFIGS.current_character.get("offset", (0, 0))
                 
                 if scale != 1.0:
                     original_width, original_height = img.size
@@ -334,22 +309,6 @@ def load_character_safe(character_name: str, emotion_index: int, default_size: t
                     img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
                 
                 result =img
-                # 图片尺寸
-                # img_width, img_height = img.size
-                
-                # # 创建800x800的透明背景图片
-                # result = Image.new("RGBA", (1000, 1000), (0, 0, 0, 0))
-                
-                # # 应用额外偏移（如果有）
-                # offsetX = CONFIGS.current_character.get(f"offsetX", {}).get(f"{emotion_index}", 0)
-                # offsetY = CONFIGS.current_character.get(f"offsetY", {}).get(f"{emotion_index}", 0)
-                
-                # # 计算粘贴位置（水平居中对齐 + 偏移）
-                # paste_x = offset[0] + 500 - img_width//2 + offsetX
-                # paste_y = offset[1] + offsetY
-                
-                # # 将缩放后的图片粘贴到透明背景上
-                # result.paste(img, (paste_x, paste_y), img)
                     
                 _character_cache[cache_key] = result
             else:
@@ -358,46 +317,6 @@ def load_character_safe(character_name: str, emotion_index: int, default_size: t
     except FileNotFoundError:
         # 创建默认透明图片
         return Image.new("RGBA", default_size, default_color)
-
-
-def load_image_safe(image_path: str, default_size: tuple = (800, 600), default_color: tuple = (100, 100, 200)) -> Image.Image:
-    """安全加载图片，文件不存在时返回默认图片"""
-    try:
-        return load_image_cached(image_path)
-    except FileNotFoundError:
-        # 创建默认图片
-        return Image.new("RGBA", default_size, default_color)
-
-
-def load_resource_image(relative_path: str) -> Image.Image:
-    """获取资源路径并加载图片"""
-    image_path = get_resource_path(relative_path)
-    return load_image_cached(image_path)
-
-
-# 创建全局预加载管理器实例
-_preload_manager = PreloadManager()
-
-
-def get_preload_manager() -> PreloadManager:
-    """获取预加载管理器实例"""
-    return _preload_manager
-
-
-def clear_all_cache():
-    """清理所有缓存以释放内存"""
-    global _font_cache, _background_cache, _character_cache, _general_image_cache
-    _font_cache.clear()
-    _background_cache.clear()
-    _character_cache.clear()
-    _general_image_cache.clear()
-
-
-def clear_character_cache():
-    """清理角色图片缓存以释放内存"""
-    global _character_cache
-    _character_cache.clear()
-
 
 def clear_cache(cache_type: str = "all"):
     """清理特定类型的缓存"""
@@ -411,3 +330,10 @@ def clear_cache(cache_type: str = "all"):
         _character_cache.clear()
     if cache_type in ("image", "all"):
         _general_image_cache.clear()
+
+# 创建全局预加载管理器实例
+_preload_manager = PreloadManager()
+
+def get_preload_manager() -> PreloadManager:
+    """获取预加载管理器实例"""
+    return _preload_manager

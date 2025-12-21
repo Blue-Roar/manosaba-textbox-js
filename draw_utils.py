@@ -82,6 +82,11 @@ def draw_content_auto(
     
     color = hex_to_rgb(CONFIGS.style.text_color)
     
+    # 获取阴影颜色
+    shadow_color = hex_to_rgb(CONFIGS.style.shadow_color)
+    shadow_offset_x = CONFIGS.style.shadow_offset_x
+    shadow_offset_y = CONFIGS.style.shadow_offset_y
+    
     # 获取强调色
     character_name = CONFIGS.get_character()
     bracket_color_hex = CONFIGS.style.get_bracket_color(character_name)
@@ -89,13 +94,6 @@ def draw_content_auto(
     
     # 获取字体名称
     font_name = CONFIGS.style.font_family
-    
-    # 应用文本偏移
-    if CONFIGS.style.text_offset_x != 0 or CONFIGS.style.text_offset_y != 0:
-        x1, y1 = top_left
-        x2, y2 = bottom_right
-        top_left = (x1 + CONFIGS.style.text_offset_x, y1 + CONFIGS.style.text_offset_y)
-        bottom_right = (x2 + CONFIGS.style.text_offset_x, y2 + CONFIGS.style.text_offset_y)
 
     # 字体加载函数
     def load_font(size: int) -> ImageFont.FreeTypeFont:
@@ -159,13 +157,12 @@ def draw_content_auto(
         # font: ImageFont.FreeTypeFont,
         color: Tuple[int, int, int],
         emoji_size: Optional[int] = None,
-        shadow_offset: int = 4,
     ) -> int:
         if emoji_size is not None:
             emoji_img = load_emoji_image(text, emoji_size)
             if emoji_img is None:
                 try:
-                    draw.text((x + shadow_offset, y + shadow_offset), EMOJI_FALLBACK_CHAR, font=font, fill=(0, 0, 0))
+                    draw.text((x + shadow_offset_x, y + shadow_offset_y), EMOJI_FALLBACK_CHAR, font=font, fill=shadow_color)
                     draw.text((x, y), EMOJI_FALLBACK_CHAR, font=font, fill=color)
                     w = int(draw.textlength(EMOJI_FALLBACK_CHAR, font=font))
                     print(f"[draw_text_or_emoji] emoji 加载失败，使用替代字符绘制: {text}")
@@ -186,7 +183,7 @@ def draw_content_auto(
             except Exception as e:
                 print(f"[draw_text_or_emoji] emoji paste 失败 {text}: {e}")
                 try:
-                    draw.text((x + shadow_offset, y + shadow_offset), EMOJI_FALLBACK_CHAR, font=font, fill=(0, 0, 0))
+                    draw.text((x + shadow_offset_x, y + shadow_offset_y), EMOJI_FALLBACK_CHAR, font=font, fill=shadow_color)
                     draw.text((x, y), EMOJI_FALLBACK_CHAR, font=font, fill=color)
                     w = int(draw.textlength(EMOJI_FALLBACK_CHAR, font=font))
                     return w
@@ -194,7 +191,7 @@ def draw_content_auto(
                     print(f"[draw_text_or_emoji] 替代字符绘制也失败: {e2}")
                     return 0
         else:
-            draw.text((x + shadow_offset, y + shadow_offset), text, font=font, fill=(0, 0, 0))
+            draw.text((x + shadow_offset_x, y + shadow_offset_y), text, font=font, fill=shadow_color)
             draw.text((x, y), text, font=font, fill=color)
             return int(draw.textlength(text, font=font))
 

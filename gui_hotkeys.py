@@ -127,21 +127,6 @@ class HotkeyManager:
         self.gui.update_status(f"热键监听已{status}")
         print(f"热键监听状态已切换为: {status}")
 
-    def reload_hotkeys(self):
-        """重新加载热键配置"""
-        try:
-            # 完全停止当前监听器
-            self.stop_hotkey_listener()
-            
-            # 等待一小段时间确保监听器完全停止
-            import time
-            time.sleep(0.1)
-            # 重新设置热键
-            self.setup_hotkeys()
-            print("热键配置已重新加载")
-        except Exception as e:
-            print(f"重新加载热键失败: {e}")
-
     # 以下方法保持不变...
     def switch_character(self, direction):
         """切换角色"""

@@ -342,5 +342,6 @@ class StatusManager:
 
     def update_status(self, message: str):
         """更新状态栏"""
-        self.status_var.set(message)
-        self.gui.root.update_idletasks()
+        if self.status_var:
+            self.status_var.set(message)
+            self.gui.root.update_idletasks()

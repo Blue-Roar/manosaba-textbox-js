@@ -2,8 +2,10 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+from PIL import ImageDraw
 import os
 import re
+import copy
 
 from path_utils import get_resource_path, get_available_fonts
 from config import CONFIGS
@@ -32,6 +34,23 @@ COMPONENT_LAYER_TYPES = {
     "extra": "额外组件"
 }
 
+def validate_and_update_color_preview(color_var, preview_label, color_value=None):
+    """通用的颜色验证和预览更新函数"""
+    if color_value is None:
+        color_value = color_var.get()
+    
+    # 验证颜色格式
+    if _validate_color_format(color_value):
+        if preview_label and preview_label.winfo_exists():
+            preview_label.configure(background=color_value)
+        return True
+    return False
+
+def _validate_color_format(color_value):
+    """验证颜色格式 - 通用版本"""
+    pattern = r'^#([A-Fa-f0-9]{6})$'
+    return re.match(pattern, color_value) is not None
+
 class StyleWindow:
     """样式编辑窗口"""
     
@@ -39,6 +58,14 @@ class StyleWindow:
         self.parent = parent
         self.core = core
         self.gui = gui
+        
+        # 保存原始配置的副本用于比较
+        self.original_style_config = copy.deepcopy(CONFIGS.style_configs.get(CONFIGS.current_style, {}))
+        self.original_components = copy.deepcopy(CONFIGS.style.image_components)
+        
+        # 标记配置是否已修改
+        self.style_changed = False
+        self.components_changed = False
         
         # 创建窗口
         self.window = tk.Toplevel(parent)
@@ -59,32 +86,32 @@ class StyleWindow:
     def _setup_ui(self):
         """设置UI界面"""
         # 创建滚动容器
-        main_canvas = tk.Canvas(self.window, highlightthickness=0)
-        v_scrollbar = ttk.Scrollbar(self.window, orient=tk.VERTICAL, command=main_canvas.yview)
-        h_scrollbar = ttk.Scrollbar(self.window, orient=tk.HORIZONTAL, command=main_canvas.xview)
+        self.main_canvas = tk.Canvas(self.window, highlightthickness=0)  # 改为实例变量
+        v_scrollbar = ttk.Scrollbar(self.window, orient=tk.VERTICAL, command=self.main_canvas.yview)
+        h_scrollbar = ttk.Scrollbar(self.window, orient=tk.HORIZONTAL, command=self.main_canvas.xview)
         
         # 创建可滚动框架
-        scrollable_frame = ttk.Frame(main_canvas)
+        scrollable_frame = ttk.Frame(self.main_canvas)
         
         # 配置canvas
-        main_canvas.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+        self.main_canvas.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
         
         # 创建窗口并设置合适的宽度
-        canvas_frame = main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_frame = self.main_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         
         # 更新函数确保框架宽度正确
         def update_scrollable_frame_width(event=None):
             # 获取canvas当前宽度
-            canvas_width = main_canvas.winfo_width()
+            canvas_width = self.main_canvas.winfo_width()
             if canvas_width > 10:  # 确保有有效宽度
                 # 减少右侧边距，使内容更靠近窗口边缘
-                main_canvas.itemconfig(canvas_frame, width=canvas_width)
+                self.main_canvas.itemconfig(canvas_frame, width=canvas_width)
         
-        scrollable_frame.bind("<Configure>", lambda e: main_canvas.configure(scrollregion=main_canvas.bbox("all")))
-        main_canvas.bind("<Configure>", update_scrollable_frame_width)
+        scrollable_frame.bind("<Configure>", lambda e: self.main_canvas.configure(scrollregion=self.main_canvas.bbox("all")))
+        self.main_canvas.bind("<Configure>", update_scrollable_frame_width)
         
         # 布局滚动组件
-        main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.main_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         v_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         
         # 初始更新一次宽度
@@ -104,7 +131,7 @@ class StyleWindow:
         self._setup_font_settings(content_frame)
         
         # 文本位置设置
-        self._setup_text_position(content_frame)
+        self._setup_text_settings(content_frame)
         
         # 图片组件设置
         self._setup_image_components(content_frame)
@@ -168,6 +195,7 @@ class StyleWindow:
             text="3:1 (默认)",
             variable=self.aspect_ratio_var,
             value="3:1",
+            command=lambda: setattr(self, 'style_changed', True)
         ).pack(side=tk.LEFT, padx=10)
         
         ttk.Radiobutton(
@@ -175,6 +203,7 @@ class StyleWindow:
             text="5:4",
             variable=self.aspect_ratio_var,
             value="5:4",
+            command=lambda: setattr(self, 'style_changed', True)
         ).pack(side=tk.LEFT, padx=10)
         
         ttk.Radiobutton(
@@ -182,6 +211,7 @@ class StyleWindow:
             text="16:9",
             variable=self.aspect_ratio_var,
             value="16:9",
+            command=lambda: setattr(self, 'style_changed', True)
         ).pack(side=tk.LEFT, padx=10)
         
         ttk.Label(
@@ -203,7 +233,7 @@ class StyleWindow:
         ttk.Label(font_row_frame, text="文本字体:").pack(side=tk.LEFT, padx=(0, 5))
         
         # 获取可用字体列表
-        available_fonts = self._get_available_fonts()
+        available_fonts = get_available_fonts()
         self.font_family_var = tk.StringVar(value=CONFIGS.style.font_family)
         
         font_combo = ttk.Combobox(
@@ -214,6 +244,7 @@ class StyleWindow:
             width=15
         )
         font_combo.pack(side=tk.LEFT, padx=(0, 20))
+        font_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'style_changed', True))
         
         ttk.Label(font_row_frame, text="字号:").pack(side=tk.LEFT, padx=(0, 5))
         
@@ -224,22 +255,25 @@ class StyleWindow:
             width=8
         )
         font_size_entry.pack(side=tk.LEFT)
+        font_size_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
-        # 文字颜色
+        # 文字颜色和阴影颜色在同一行
         color_frame = ttk.Frame(font_frame)
         color_frame.pack(fill=tk.X, pady=5)
         
+        # 文字颜色
         ttk.Label(color_frame, text="文字颜色:").pack(side=tk.LEFT, padx=(0, 5))
         
         self.text_color_var = tk.StringVar(value=CONFIGS.style.text_color)
-        color_entry = ttk.Entry(
+        text_color_entry = ttk.Entry(
             color_frame,
             textvariable=self.text_color_var,
             width=12
         )
-        color_entry.pack(side=tk.LEFT, padx=(0, 5))
+        text_color_entry.pack(side=tk.LEFT, padx=(0, 5))
+        text_color_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
-        # 颜色预览
+        # 文字颜色预览
         self.text_color_preview = ttk.Label(
             color_frame,
             text="   ",
@@ -247,10 +281,53 @@ class StyleWindow:
             relief="solid",
             width=3
         )
-        self.text_color_preview.pack(side=tk.LEFT)
+        self.text_color_preview.pack(side=tk.LEFT, padx=(0, 20))
+        
+        # 阴影颜色
+        ttk.Label(color_frame, text="阴影颜色:").pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.shadow_color_var = tk.StringVar(value=CONFIGS.style.shadow_color)
+        shadow_color_entry = ttk.Entry(
+            color_frame,
+            textvariable=self.shadow_color_var,
+            width=12
+        )
+        shadow_color_entry.pack(side=tk.LEFT, padx=(0, 5))
+        shadow_color_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 阴影颜色预览
+        self.shadow_color_preview = ttk.Label(
+            color_frame,
+            text="   ",
+            background=self.shadow_color_var.get(),
+            relief="solid",
+            width=3
+        )
+        self.shadow_color_preview.pack(side=tk.LEFT)
+        
+        # 阴影偏移设置
+        shadow_offset_frame = ttk.Frame(font_frame)
+        shadow_offset_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(shadow_offset_frame, text="阴影偏移:", width=8).pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 阴影X偏移
+        ttk.Label(shadow_offset_frame, text="X:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.shadow_offset_x_var = tk.StringVar(value=str(CONFIGS.style.shadow_offset_x))
+        shadow_x_entry = ttk.Entry(shadow_offset_frame, textvariable=self.shadow_offset_x_var, width=6)
+        shadow_x_entry.pack(side=tk.LEFT, padx=(0, 15))
+        shadow_x_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 阴影Y偏移
+        ttk.Label(shadow_offset_frame, text="Y:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.shadow_offset_y_var = tk.StringVar(value=str(CONFIGS.style.shadow_offset_y))
+        shadow_y_entry = ttk.Entry(shadow_offset_frame, textvariable=self.shadow_offset_y_var, width=6)
+        shadow_y_entry.pack(side=tk.LEFT)
+        shadow_y_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
         # 绑定颜色变化
         self.text_color_var.trace_add("write", self._update_text_color_preview)
+        self.shadow_color_var.trace_add("write", self._update_shadow_color_preview)
         
         # 使用角色颜色作为强调色
         self.use_character_color_var = tk.BooleanVar(value=CONFIGS.style.use_character_color)
@@ -258,7 +335,7 @@ class StyleWindow:
             font_frame,
             text="使用角色颜色作为强调色",
             variable=self.use_character_color_var,
-            command=self._on_use_character_color_changed
+            command=lambda: [self._on_use_character_color_changed(), setattr(self, 'style_changed', True)]
         )
         use_char_color_cb.pack(anchor=tk.W, pady=5)
         
@@ -275,6 +352,7 @@ class StyleWindow:
             width=12
         )
         bracket_color_entry.pack(side=tk.LEFT, padx=(0, 5))
+        bracket_color_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
         # 强调颜色预览
         self.bracket_color_preview = ttk.Label(
@@ -292,79 +370,191 @@ class StyleWindow:
         # 更新强调颜色输入框状态
         self._update_bracket_color_entry_state()
     
-    def _setup_text_position(self, parent):
-        """设置文本位置设置"""
-        position_frame = ttk.LabelFrame(parent, text="文本位置设置", padding="10")
-        position_frame.pack(fill=tk.X, pady=10)
+    def _setup_text_settings(self, parent):
+        """设置文本设置"""
+        text_frame = ttk.LabelFrame(parent, text="文本设置", padding="10")
+        text_frame.pack(fill=tk.X, pady=10)
         
-        # 使用Frame和pack布局替代grid
-        # 偏移设置 - 第一行
-        offset_row1 = ttk.Frame(position_frame)
-        offset_row1.pack(fill=tk.X, pady=5)
+        # 第一行：文本框区域设置
+        region_frame = ttk.Frame(text_frame)
+        region_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(offset_row1, text="水平偏移(X):", width=12).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(region_frame, text="文本区域:", width=10).pack(side=tk.LEFT, padx=(0, 5))
         
-        self.text_offset_x_var = tk.StringVar(value=str(CONFIGS.style.text_offset_x))
-        offset_x_entry = ttk.Entry(
-            offset_row1,
-            textvariable=self.text_offset_x_var,
-            width=12
+        # X坐标
+        ttk.Label(region_frame, text="X:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.textbox_x_var = tk.StringVar(value=str(CONFIGS.style.textbox_x))
+        x_entry = ttk.Entry(region_frame, textvariable=self.textbox_x_var, width=6)
+        x_entry.pack(side=tk.LEFT, padx=(0, 5))
+        x_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # Y坐标
+        ttk.Label(region_frame, text="Y:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.textbox_y_var = tk.StringVar(value=str(CONFIGS.style.textbox_y))
+        y_entry = ttk.Entry(region_frame, textvariable=self.textbox_y_var, width=6)
+        y_entry.pack(side=tk.LEFT, padx=(0, 5))
+        y_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 宽度
+        ttk.Label(region_frame, text="宽:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.textbox_width_var = tk.StringVar(value=str(CONFIGS.style.textbox_width))
+        width_entry = ttk.Entry(region_frame, textvariable=self.textbox_width_var, width=6)
+        width_entry.pack(side=tk.LEFT, padx=(0, 5))
+        width_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 高度
+        ttk.Label(region_frame, text="高:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.textbox_height_var = tk.StringVar(value=str(CONFIGS.style.textbox_height))
+        height_entry = ttk.Entry(region_frame, textvariable=self.textbox_height_var, width=6)
+        height_entry.pack(side=tk.LEFT, padx=(0, 5))
+        height_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 预览按钮（放在第一行最右边）
+        preview_btn = ttk.Button(
+            region_frame,
+            text="预览区域",
+            command=self._show_textbox_preview,
+            width=8
         )
-        offset_x_entry.pack(side=tk.LEFT, padx=(0, 20))
+        preview_btn.pack(side=tk.RIGHT, padx=(10, 0))
         
-        ttk.Label(offset_row1, text="垂直偏移(Y):", width=12).pack(side=tk.LEFT, padx=(0, 5))
+        # 第二行：对齐设置
+        align_frame = ttk.Frame(text_frame)
+        align_frame.pack(fill=tk.X, pady=5)
         
-        self.text_offset_y_var = tk.StringVar(value=str(CONFIGS.style.text_offset_y))
-        offset_y_entry = ttk.Entry(
-            offset_row1,
-            textvariable=self.text_offset_y_var,
-            width=12
-        )
-        offset_y_entry.pack(side=tk.LEFT)
+        ttk.Label(align_frame, text="文本对齐:", width=10).pack(side=tk.LEFT, padx=(0, 5))
         
-        # 对齐设置 - 第二行
-        align_row = ttk.Frame(position_frame)
-        align_row.pack(fill=tk.X, pady=5)
-        
-        ttk.Label(align_row, text="水平对齐(X):", width=12).pack(side=tk.LEFT, padx=(0, 5))
+        # 水平对齐
+        ttk.Label(align_frame, text="水平:", width=4).pack(side=tk.LEFT, padx=(0, 2))
         
         self.text_align_var = tk.StringVar(value=CONFIGS.style.text_align)
-        # 将英文值转换为中文显示
         align_mapping = {"left": "左", "center": "中", "right": "右"}
         align_display = align_mapping.get(CONFIGS.style.text_align, "左")
         align_combo = ttk.Combobox(
-            align_row,
+            align_frame,
             textvariable=self.text_align_var,
             values=["左", "中", "右"],
             state="readonly",
-            width=12
+            width=5
         )
         align_combo.set(align_display)
-        align_combo.pack(side=tk.LEFT, padx=(0, 20))
+        align_combo.pack(side=tk.LEFT, padx=(0, 15))
+        align_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'style_changed', True))
         
-        ttk.Label(align_row, text="垂直对齐(Y):", width=12).pack(side=tk.LEFT, padx=(0, 5))
+        # 垂直对齐
+        ttk.Label(align_frame, text="垂直:", width=4).pack(side=tk.LEFT, padx=(0, 2))
         
         self.text_valign_var = tk.StringVar(value=CONFIGS.style.text_valign)
         valign_mapping = {"top": "上", "middle": "中", "bottom": "下"}
         valign_display = valign_mapping.get(CONFIGS.style.text_valign, "上")
         valign_combo = ttk.Combobox(
-            align_row,
+            align_frame,
             textvariable=self.text_valign_var,
             values=["上", "中", "下"],
             state="readonly",
-            width=12
+            width=5
         )
         valign_combo.set(valign_display)
         valign_combo.pack(side=tk.LEFT)
+        valign_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'style_changed', True))
         
         # 说明
         ttk.Label(
-            position_frame,
-            text="注：偏移值相对于文本框区域的默认位置，正值向右/下偏移",
+            text_frame,
+            text="注：文本框区域定义文字和图片的绘制范围",
             font=("", 8),
             foreground="gray"
-        ).pack(anchor=tk.W, pady=(10, 0))
-    
+        ).pack(anchor=tk.W, pady=(5, 0))
+
+    def _show_textbox_preview(self):
+        """显示文本框区域预览"""
+        if not self.gui:
+            return
+        
+        if (hasattr(self, '_is_previewing') and self._is_previewing):
+            self._clear_textbox_preview()
+
+        # 获取预览管理器
+        preview_manager = self.gui.preview_manager
+        
+        # 确保有显示图片
+        if not preview_manager.displayed_image:
+            messagebox.showinfo("提示", "请先生成预览图")
+            return
+        
+        # 获取当前缩放比例
+        zoom_level = preview_manager.zoom_level
+        
+        # 创建显示图的副本
+        display_copy = preview_manager.displayed_image.copy()
+        draw = ImageDraw.Draw(display_copy, 'RGBA')
+        
+        # 计算文本框区域
+        try:
+            textbox_x = int(self.textbox_x_var.get() or 0)
+            textbox_y = int(self.textbox_y_var.get() or 0)
+            textbox_width = int(self.textbox_width_var.get() or 0)
+            textbox_height = int(self.textbox_height_var.get() or 0)
+        except ValueError:
+            messagebox.showerror("错误", "请输入有效的数字")
+            return
+        
+        # 将实际区域坐标缩放到当前显示图的大小
+        scaled_x1 = int(textbox_x * zoom_level)
+        scaled_y1 = int(textbox_y * zoom_level)
+        scaled_x2 = int((textbox_x + textbox_width) * zoom_level)
+        scaled_y2 = int((textbox_y + textbox_height) * zoom_level)
+        
+        # 确保坐标在显示图范围内
+        img_width, img_height = display_copy.size
+        if scaled_x1 < 0:
+            scaled_x1 = 0
+        if scaled_y1 < 0:
+            scaled_y1 = 0
+        if scaled_x2 > img_width:
+            scaled_x2 = img_width
+        if scaled_y2 > img_height:
+            scaled_y2 = img_height
+        
+        # 绘制矩形边框（红色，宽度3）
+        draw.rectangle([scaled_x1, scaled_y1, scaled_x2, scaled_y2], 
+                    outline=(255, 0, 0, 255), width=3)
+        
+        # 绘制半透明填充
+        draw.rectangle([scaled_x1, scaled_y1, scaled_x2, scaled_y2], 
+                    fill=(255, 0, 0, 50))
+        
+        # 保存当前显示状态
+        self._original_display = preview_manager.displayed_image
+        self._display_with_box = display_copy
+        
+        # 更新显示图
+        preview_manager.displayed_image = display_copy
+        preview_manager._update_displayed_image()
+        
+        # 标记正在预览
+        self._is_previewing = True
+
+    def _clear_textbox_preview(self):
+        """清除文本框区域预览"""
+        if not hasattr(self, '_is_previewing') or not self._is_previewing:
+            return
+        
+        # 获取预览管理器
+        preview_manager = self.gui.preview_manager
+        
+        # 恢复原始预览图
+        if hasattr(self, '_original_display') and self._original_display:
+            preview_manager.displayed_image = self._original_display
+            preview_manager._update_displayed_image()
+        
+        # 清除标记
+        self._is_previewing = False
+        if hasattr(self, '_original_display'):
+            delattr(self, '_original_display')
+        if hasattr(self, '_preview_with_box'):
+            delattr(self, '_preview_with_box')
+            
     def _setup_image_components(self, parent):
         """设置图片组件设置"""
         components_frame = ttk.LabelFrame(parent, text="图片组件设置", padding="10")
@@ -594,62 +784,26 @@ class StyleWindow:
             "id": f"extra_{len([c for c in CONFIGS.style.image_components if c.get('type') == 'extra']) + 1}"
         }
         
-        # 添加到配置
-        CONFIGS.add_extra_component(component_config)
+        # 添加到临时组件列表（不直接修改CONFIGS）
+        self._temp_components = copy.deepcopy(CONFIGS.style.image_components)
+        self._temp_components.append(component_config)
         
         # 重新加载所有组件以确保正确显示
         self._load_image_components()
+        self.components_changed = True
     
-    def _reorder_components(self):
-        """重新排序所有组件，确保图层序号唯一且连续"""
-        # 获取所有组件
-        components = []
-        
-        # 收集内置组件
-        for component_type in ["character", "textbox", "namebox"]:
-            component = CONFIGS.get_component_by_type(component_type)
-            if component:
-                components.append(component)
-        
-        # 收集额外组件
-        components.extend(CONFIGS.get_extra_components())
-        
-        # 按当前图层排序
-        components.sort(key=lambda x: x.get("layer", 0))
-        
-        # 重新分配图层序号
-        for i, component in enumerate(components):
-            old_layer = component.get("layer", 0)
-            component["layer"] = i
-            
-            # 更新UI中的显示
-            component_id = None
-            if component.get("type") == "character":
-                component_id = "character"
-            elif component.get("type") == "textbox":
-                component_id = "textbox"
-            elif component.get("type") == "namebox":
-                component_id = "namebox"
-            else:
-                component_id = component.get("id")
-            
-            if component_id in self.component_widgets:
-                self.component_widgets[component_id]["widgets"]["layer_var"].set(i)
-        
-        # 更新图层显示并重新排序UI
-        self._update_layer_display()
-        self._reorder_component_uis()
-
     def _remove_component(self, component_id):
         """删除组件"""
-        # 从配置中移除
-        CONFIGS.remove_extra_component(component_id)
+        # 从临时组件列表中移除
+        self._temp_components = [c for c in self._temp_components 
+                               if not (c.get("type") == "extra" and c.get("id") == component_id)]
         
         # 重新加载所有组件以确保UI正确显示
         self._load_image_components()
+        self.components_changed = True
     
     def _move_component_up(self, component_id):
-        """上移组件（增加图层值）并调整UI位置"""
+        """上移组件（增加图层值）并调整UI位置 - 优化版"""
         if component_id not in self.component_widgets:
             return
         
@@ -676,31 +830,30 @@ class StyleWindow:
                 other_ui["widgets"]["layer_var"].set(current_layer)
                 self.component_widgets[component_id]["widgets"]["layer_var"].set(next_layer)
                 
-                # 更新配置中的组件图层
-                self._update_component_config_layers()
+                # 更新图层显示
+                self._update_layer_display()
                 
-                # 重新加载UI以正确显示
-                self._load_image_components()
+                # 交换两个组件在UI中的位置（不重新创建整个UI）
+                self._swap_component_positions(component_id, other_id)
                 
-                # 更新组件状态
-                self._on_component_changed(component_id)
-                self._on_component_changed(other_id)
+                # 标记组件已修改
+                self.components_changed = True
                 return
         
         # 如果没有找到交换的组件，直接增加图层值
         self.component_widgets[component_id]["widgets"]["layer_var"].set(next_layer)
         
-        # 更新配置中的组件图层
-        self._update_component_config_layers()
+        # 更新图层显示
+        self._update_layer_display()
         
-        # 重新加载UI以正确显示
-        self._load_image_components()
+        # 重新排序UI但不重新创建
+        self._reorder_component_uis_no_recreate()
         
-        # 更新组件状态
-        self._on_component_changed(component_id)
-    
+        # 标记组件已修改
+        self.components_changed = True
+
     def _move_component_down(self, component_id):
-        """下移组件（减少图层值）并调整UI位置"""
+        """下移组件（减少图层值）并调整UI位置 - 优化版"""
         if component_id not in self.component_widgets:
             return
         
@@ -727,62 +880,73 @@ class StyleWindow:
                 other_ui["widgets"]["layer_var"].set(current_layer)
                 self.component_widgets[component_id]["widgets"]["layer_var"].set(prev_layer)
                 
-                # 更新配置中的组件图层
-                self._update_component_config_layers()
+                # 更新图层显示
+                self._update_layer_display()
                 
-                # 重新加载UI以正确显示
-                self._load_image_components()
+                # 交换两个组件在UI中的位置（不重新创建整个UI）
+                self._swap_component_positions(other_id, component_id)
                 
-                # 更新组件状态
-                self._on_component_changed(component_id)
-                self._on_component_changed(other_id)
+                # 标记组件已修改
+                self.components_changed = True
                 return
         
         # 如果没有找到交换的组件，直接减少图层值
         self.component_widgets[component_id]["widgets"]["layer_var"].set(prev_layer)
         
-        # 更新配置中的组件图层
-        self._update_component_config_layers()
+        # 更新图层显示
+        self._update_layer_display()
         
-        # 重新加载UI以正确显示
-        self._load_image_components()
+        # 重新排序UI但不重新创建
+        self._reorder_component_uis_no_recreate()
         
-        # 更新组件状态
-        self._on_component_changed(component_id)
-        
-    def _update_component_config_layers(self):
-        """更新配置中所有组件的图层值"""
-        # 收集所有组件的新图层值
-        component_layers = {}
-        for component_id, component_ui in self.component_widgets.items():
-            component_layers[component_id] = component_ui["widgets"]["layer_var"].get()
-        
-        # 按图层值排序组件ID
-        sorted_ids = sorted(component_layers.items(), key=lambda x: x[1])
-        
-        # 更新配置中的组件图层
-        for component_id, layer in sorted_ids:
-            # 查找对应的组件
-            for component in CONFIGS.style.image_components:
-                # 确定组件ID
-                component_type = component.get("type")
-                comp_id = None
-                
-                if component_type == "character":
-                    comp_id = "character"
-                elif component_type == "textbox":
-                    comp_id = "textbox"
-                elif component_type == "namebox":
-                    comp_id = "namebox"
-                else:
-                    comp_id = component.get("id")
-                
-                if comp_id == component_id:
-                    component["layer"] = layer
-                    break
+        # 标记组件已修改
+        self.components_changed = True
 
-    def _reorder_component_uis(self):
-        """根据图层值重新排序组件UI（图层值大的在上）"""
+    def _swap_component_positions(self, component_id1, component_id2):
+        """交换两个组件在UI中的位置"""
+        if component_id1 not in self.component_widgets or component_id2 not in self.component_widgets:
+            return
+        
+        # 获取两个组件的框架
+        frame1 = self.component_widgets[component_id1]["frame"]
+        frame2 = self.component_widgets[component_id2]["frame"]
+        
+        # 从容器中暂时移除两个框架
+        frame1.pack_forget()
+        frame2.pack_forget()
+        
+        # 记录当前滚动位置
+        if hasattr(self, 'main_canvas'):
+            original_yview = self.main_canvas.yview()
+        
+        # 获取所有组件按图层排序
+        components_by_layer = []
+        for comp_id, component_ui in self.component_widgets.items():
+            layer = component_ui["widgets"]["layer_var"].get()
+            components_by_layer.append((layer, comp_id, component_ui["frame"]))
+        
+        # 按图层降序排序（图层值大的在上，图层值小的在下）
+        components_by_layer.sort(key=lambda x: x[0], reverse=True)
+        
+        # 从容器中移除所有组件
+        for frame in self.components_container.winfo_children():
+            frame.pack_forget()
+        
+        # 按新的图层顺序重新pack（图层值大的在上）
+        for layer, component_id, frame in components_by_layer:
+            frame.pack(fill=tk.X, pady=3, padx=2)
+        
+        # 恢复滚动位置
+        if hasattr(self, 'main_canvas') and original_yview:
+            self.window.update_idletasks()  # 等待UI更新
+            self.main_canvas.yview_moveto(original_yview[0])
+
+    def _reorder_component_uis_no_recreate(self):
+        """重新排序组件UI但不重新创建 - 优化版"""
+        # 记录当前滚动位置
+        if hasattr(self, 'main_canvas'):
+            original_yview = self.main_canvas.yview()
+        
         # 获取所有组件按图层排序
         components_by_layer = []
         for component_id, component_ui in self.component_widgets.items():
@@ -799,17 +963,22 @@ class StyleWindow:
         # 按新的图层顺序重新pack（图层值大的在上）
         for layer, component_id, frame in components_by_layer:
             frame.pack(fill=tk.X, pady=3, padx=2)
+        
+        # 恢复滚动位置
+        if hasattr(self, 'main_canvas') and original_yview:
+            self.window.update_idletasks()  # 等待UI更新
+            self.main_canvas.yview_moveto(original_yview[0])
 
     def _update_layer_display(self):
         """更新所有组件的图层显示"""
         for component_id, component_ui in self.component_widgets.items():
             layer = component_ui["widgets"]["layer_var"].get()
             component_ui["layer_label"].config(text=f"图层 {layer}")
-
+        
     def _on_component_changed(self, component_id):
         """组件设置改变"""
-        # 标记设置已改变
-        pass
+        # 标记组件已修改
+        self.components_changed = True
     
     def _load_image_components(self):
         """加载图片组件 - 重新创建所有UI"""
@@ -818,24 +987,17 @@ class StyleWindow:
             widget.destroy()
         self.component_widgets.clear()
         
+        # 初始化临时组件列表
+        if not hasattr(self, '_temp_components'):
+            self._temp_components = copy.deepcopy(CONFIGS.style.image_components)
+        
         # 按图层值降序加载组件（图层值大的先加载，显示在上方）
-        sorted_components = sorted(CONFIGS.style.image_components, 
+        sorted_components = sorted(self._temp_components, 
                                   key=lambda x: x.get("layer", 0), reverse=True)
         
         # 加载所有组件
         for component in sorted_components:
             self._create_component_ui(component)
-    
-    def _get_available_fonts(self):
-        """获取可用字体列表"""
-        font_files = get_available_fonts()
-        project_fonts = []
-
-        for font_path in font_files:
-            if font_path:
-                font_name = os.path.splitext(os.path.basename(font_path))[0]
-                project_fonts.append(font_name)
-        return project_fonts
     
     def _get_shader_files(self):
         """获取shader文件夹中的图片文件列表"""
@@ -856,12 +1018,28 @@ class StyleWindow:
         # 加载新样式配置
         CONFIGS.apply_style(style_name)
         
+        # 更新原始配置副本
+        self.original_style_config = copy.deepcopy(CONFIGS.style_configs.get(style_name, {}))
+        self.original_components = copy.deepcopy(CONFIGS.style.image_components)
+        
+        # 重置临时组件列表
+        if hasattr(self, '_temp_components'):
+            delattr(self, '_temp_components')
+        
+        # 重置修改标记
+        self.style_changed = False
+        self.components_changed = False
+        
         # 完全重新构建UI显示
         self._rebuild_ui_from_style()
-        
+
         # 通知主界面刷新预览
         if self.gui:
             self.gui.update_preview()
+
+        # 如果预览了文本区，清除标志
+        if(hasattr(self, '_is_previewing')):
+            self._is_previewing = False
     
     def _rebuild_ui_from_style(self):
         """完全重新构建UI从当前样式"""
@@ -880,9 +1058,11 @@ class StyleWindow:
         self._update_bracket_color_preview()
         self._update_bracket_color_entry_state()
         
-        # 文本位置
-        self.text_offset_x_var.set(str(CONFIGS.style.text_offset_x))
-        self.text_offset_y_var.set(str(CONFIGS.style.text_offset_y))
+        # 文本设置 - 更新文本框区域和对齐方式
+        self.textbox_x_var.set(str(CONFIGS.style.textbox_x))
+        self.textbox_y_var.set(str(CONFIGS.style.textbox_y))
+        self.textbox_width_var.set(str(CONFIGS.style.textbox_width))
+        self.textbox_height_var.set(str(CONFIGS.style.textbox_height))
         
         # 将对齐方式从英文转换为中文显示
         align_mapping = {"left": "左", "center": "中", "right": "右"}
@@ -900,41 +1080,6 @@ class StyleWindow:
         
         # 完全重新加载图片组件
         self._load_image_components()
-            
-    def _update_ui_from_style(self):
-        """从当前样式更新UI显示"""
-        # 图片比例
-        self.aspect_ratio_var.set(CONFIGS.style.aspect_ratio)
-        
-        # 字体设置
-        self.font_family_var.set(CONFIGS.style.font_family)
-        self.font_size_var.set(str(CONFIGS.style.font_size))
-        self.text_color_var.set(CONFIGS.style.text_color)
-        self.use_character_color_var.set(CONFIGS.style.use_character_color)
-        self.bracket_color_var.set(CONFIGS.style.bracket_color)
-        
-        # 更新预览
-        self._update_text_color_preview()
-        self._update_bracket_color_preview()
-        self._update_bracket_color_entry_state()
-        
-        # 文本位置
-        self.text_offset_x_var.set(str(CONFIGS.style.text_offset_x))
-        self.text_offset_y_var.set(str(CONFIGS.style.text_offset_y))
-        
-        # 将对齐方式从英文转换为中文显示
-        align_mapping = {"left": "左", "center": "中", "right": "右"}
-        valign_mapping = {"top": "上", "middle": "中", "bottom": "下"}
-        
-        align_display = align_mapping.get(CONFIGS.style.text_align, "左")
-        valign_display = valign_mapping.get(CONFIGS.style.text_valign, "上")
-        
-        # 直接设置Combobox的值
-        if hasattr(self, 'text_align_var'):
-            self.text_align_var.set(align_display)
-        
-        if hasattr(self, 'text_valign_var'):
-            self.text_valign_var.set(valign_display)
     
     def _on_use_character_color_changed(self):
         """使用角色颜色作为强调色选项改变"""
@@ -974,36 +1119,54 @@ class StyleWindow:
                 self.bracket_color_preview.config(state="normal")
     
     def _update_text_color_preview(self, *args):
-        """更新文字颜色预览"""
+        """更新文字颜色预览 - 使用通用函数"""
         if not hasattr(self, 'text_color_preview'):
             return
             
         color_value = self.text_color_var.get()
-        if self._validate_color_format(color_value):
-            self.text_color_preview.configure(background=color_value)
-    
+        if validate_and_update_color_preview(self.text_color_var, self.text_color_preview, color_value):
+            pass  # 颜色有效
+        else:
+            self.text_color_preview.configure(background="#FFFFFF")
+
     def _update_bracket_color_preview(self, *args):
-        """更新强调颜色预览"""
+        """更新强调颜色预览 - 使用通用函数"""
         if not hasattr(self, 'bracket_color_preview'):
             return
             
         color_value = self.bracket_color_var.get()
-        if self._validate_color_format(color_value):
-            self.bracket_color_preview.configure(background=color_value)
-    
-    def _validate_color_format(self, color_value):
-        """验证颜色格式"""
-        pattern = r'^#([A-Fa-f0-9]{6})$'
-        return re.match(pattern, color_value) is not None
-    
+        if validate_and_update_color_preview(self.bracket_color_var, self.bracket_color_preview, color_value):
+            pass  # 颜色有效
+        else:
+            self.bracket_color_preview.configure(background="#EF4F54")
+
+    def _update_shadow_color_preview(self, *args):
+        """更新阴影颜色预览 - 使用通用函数"""
+        if not hasattr(self, 'shadow_color_preview'):
+            return
+            
+        color_value = self.shadow_color_var.get()
+        if validate_and_update_color_preview(self.shadow_color_var, self.shadow_color_preview, color_value):
+            pass  # 颜色有效
+        else:
+            self.shadow_color_preview.configure(background="#000000")
+
     def _collect_style_data(self):
         """收集所有样式设置数据"""
         # 收集组件数据
         image_components = []
         
+        # 使用临时组件列表或原始组件列表
+        components_source = self._temp_components if hasattr(self, '_temp_components') else CONFIGS.style.image_components
+        
         # 首先收集内置组件（character, textbox, namebox）
         for component_type in ["character", "textbox", "namebox"]:
-            component = CONFIGS.get_component_by_type(component_type)
+            component = None
+            for comp in components_source:
+                if comp.get("type") == component_type:
+                    component = comp
+                    break
+            
             if component:
                 # 查找对应的UI控件
                 component_id = component_type  # 使用组件类型作为ID
@@ -1074,8 +1237,13 @@ class StyleWindow:
             "text_color": self.text_color_var.get() if hasattr(self, 'text_color_var') else "#FFFFFF",
             "bracket_color": self.bracket_color_var.get() if hasattr(self, 'bracket_color_var') else "#EF4F54",
             "use_character_color": self.use_character_color_var.get() if hasattr(self, 'use_character_color_var') else False,
-            "text_offset_x": int(self.text_offset_x_var.get() or 0) if hasattr(self, 'text_offset_x_var') else 0,
-            "text_offset_y": int(self.text_offset_y_var.get() or 0) if hasattr(self, 'text_offset_y_var') else 0,
+            "shadow_color": self.shadow_color_var.get() if hasattr(self, 'shadow_color_var') else "#000000",
+            "shadow_offset_x": int(self.shadow_offset_x_var.get() or 4) if hasattr(self, 'shadow_offset_x_var') else 4,
+            "shadow_offset_y": int(self.shadow_offset_y_var.get() or 4) if hasattr(self, 'shadow_offset_y_var') else 4,
+            "textbox_x": int(self.textbox_x_var.get() or 760) if hasattr(self, 'textbox_x_var') else 760,
+            "textbox_y": int(self.textbox_y_var.get() or 355) if hasattr(self, 'textbox_y_var') else 355,
+            "textbox_width": int(self.textbox_width_var.get() or 1579) if hasattr(self, 'textbox_width_var') else 1579,
+            "textbox_height": int(self.textbox_height_var.get() or 445) if hasattr(self, 'textbox_height_var') else 445,
             "text_align": text_align_mapping.get(text_align_display, "left"),
             "text_valign": text_valign_mapping.get(text_valign_display, "top"),
             "image_components": image_components
@@ -1083,45 +1251,29 @@ class StyleWindow:
         
         return style_data
     
-    def _override_button_commands(self, close_callback):
-        """覆盖按钮的命令，确保它们正确调用关闭回调"""
-        # 查找所有按钮并修改其命令
-        for widget in self.window.winfo_children():
-            if isinstance(widget, ttk.Button):
-                current_cmd = widget.cget("command")
-                if current_cmd:
-                    # 创建一个包装函数，先执行原命令，然后调用关闭回调
-                    def wrapped_cmd(original_cmd=current_cmd, close_cb=close_callback):
-                        try:
-                            original_cmd()
-                        finally:
-                            close_cb()
-                    widget.config(command=wrapped_cmd)
-            
-            # 递归查找子部件
-            for child in widget.winfo_children():
-                if isinstance(child, ttk.Button):
-                    current_cmd = child.cget("command")
-                    if current_cmd:
-                        def wrapped_cmd(original_cmd=current_cmd, close_cb=close_callback):
-                            try:
-                                original_cmd()
-                            finally:
-                                close_cb()
-                        child.config(command=wrapped_cmd)
-    
     def _on_apply(self):
         """应用样式设置"""
         style_name = self.style_var.get()
         style_data = self._collect_style_data()
         
         # 验证颜色格式
-        if not self._validate_color_format(style_data["text_color"]):
-            messagebox.showerror("错误", "文字颜色格式无效，请输入有效的十六进制颜色值（例如：#FFFFFF）")
-            return False
+        color_errors = []
         
-        if not self._validate_color_format(style_data["bracket_color"]):
-            messagebox.showerror("错误", "强调颜色格式无效，请输入有效的十六进制颜色值（例如：#FFFFFF）")
+        # 验证文字颜色
+        if not validate_and_update_color_preview(self.text_color_var, None, style_data["text_color"]):
+            color_errors.append("文字颜色")
+        
+        # 验证强调颜色
+        if not validate_and_update_color_preview(self.bracket_color_var, None, style_data["bracket_color"]):
+            color_errors.append("强调颜色")
+        
+        # 验证阴影颜色
+        if not validate_and_update_color_preview(self.shadow_color_var, None, style_data["shadow_color"]):
+            color_errors.append("阴影颜色")
+        
+        if color_errors:
+            error_msg = f"以下颜色格式无效，请输入有效的十六进制颜色值（例如：#FFFFFF）：\n{', '.join(color_errors)}"
+            messagebox.showerror("错误", error_msg)
             return False
         
         # 验证数值输入
@@ -1130,19 +1282,15 @@ class StyleWindow:
             if not 8 <= style_data["font_size"] <= 250:
                 messagebox.showerror("错误", "字体大小必须在8到250之间")
                 return False
-            
-            # 验证偏移值在合理范围内
-            if abs(style_data["text_offset_x"]) > 500:
-                messagebox.showerror("错误", "水平偏移值过大，应在-500到500之间")
-                return False
-                
-            if abs(style_data["text_offset_y"]) > 500:
-                messagebox.showerror("错误", "垂直偏移值过大，应在-500到500之间")
-                return False
                                 
         except ValueError as e:
             messagebox.showerror("错误", f"数值格式错误: {str(e)}")
             return False
+        
+        # 检查样式是否有变化
+        if not self.style_changed and not self.components_changed:
+            # 没有变化，直接返回成功
+            return True
         
         # 更新样式配置
         success = CONFIGS.update_style(style_name, style_data)
@@ -1150,6 +1298,19 @@ class StyleWindow:
         if success:
             # 立即应用样式到当前配置
             CONFIGS.apply_style(style_name)
+            
+            # 更新原始配置副本
+            self.original_style_config = copy.deepcopy(CONFIGS.style_configs.get(style_name, {}))
+            self.original_components = copy.deepcopy(CONFIGS.style.image_components)
+            
+            # 清除临时组件列表
+            if hasattr(self, '_temp_components'):
+                delattr(self, '_temp_components')
+            
+            # 重置修改标记
+            self.style_changed = False
+            self.components_changed = False
+            
             # 刷新GUI预览
             if self.gui:
                 self.gui.update_preview()
@@ -1162,8 +1323,8 @@ class StyleWindow:
     
     def _on_save_apply(self):
         """保存并应用样式设置"""
-        self._on_apply()
-        self.window.destroy()
+        if(self._on_apply()):
+            self.window.destroy()
 
     def _on_close(self):
         """处理窗口关闭事件"""

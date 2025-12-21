@@ -56,20 +56,28 @@ class ManosabaCore:
         
         # 程序启动时开始预加载图片
         self.update_status("正在预加载图片到缓存...")
-
-        # 初始化预加载状态
-        self._preload_status = {
-            'total_items': 0,
-            'loaded_items': 0,
-            'is_complete': False
-        }
-
-        # 修改：只预加载当前角色的图片，而不是所有角色
-        current_character = CONFIGS.get_character()
-        self.preload_manager.preload_character_images_async(current_character)
-        # 同时预加载背景图片
-        self.preload_manager.preload_backgrounds_async()
-
+        
+        # 获取预加载设置
+        preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+        preload_character = preloading_settings.get("preload_character", True)
+        preload_background = preloading_settings.get("preload_background", True)
+        
+        # 根据设置决定是否预加载
+        if preload_character:
+            # 修改：只预加载当前角色的图片，而不是所有角色
+            current_character = CONFIGS.get_character()
+            self.preload_manager.preload_character_images_async(current_character)
+            self.update_status(f"开始预加载角色: {current_character}")
+        else:
+            self.update_status("角色图片预加载已禁用")
+        
+        if preload_background:
+            # 预加载背景图片
+            self.preload_manager.preload_backgrounds_async()
+            self.update_status("开始预加载背景图片")
+        else:
+            self.update_status("背景图片预加载已禁用")
+    
         # 程序启动时检查是否需要初始化
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
         if sentiment_settings.get("enabled", False):
@@ -78,15 +86,6 @@ class ManosabaCore:
         else:
             self.update_status("情感匹配功能未启用")
             self._notify_gui_status_change(False, False)
-
-    
-    def get_preload_progress(self):
-        """获取预加载进度"""
-        return self.preload_manager.get_preload_progress()
-
-    def get_preload_status(self):
-        """获取预加载状态"""
-        return self.preload_manager.get_preload_status()
 
     def _calculate_canvas_size(self):
         """根据样式配置计算画布大小"""
@@ -363,7 +362,7 @@ class ManosabaCore:
             font_size = config["font_size"]
             
             # 获取字体
-            font_name = CONFIGS.current_character.get("font", "font3.ttf")
+            font_name = CONFIGS.current_character.get("font", "font3")
             font = load_font_cached(font_name, font_size)
             
             # 计算文字宽度（使用textlength方法）
@@ -585,10 +584,7 @@ class ManosabaCore:
             # 查找对应情感的表情索引列表
             emotion_indices = character_meta.get(sentiment, [])
             if not emotion_indices:
-                # 如果没有对应的情感，使用无感情表情
-                emotion_indices = character_meta.get("无感情", [])
-                if not emotion_indices:
-                    return None
+                return None
                 
             # 随机选择一个表情索引
             if emotion_indices:
@@ -627,9 +623,15 @@ class ManosabaCore:
             else:
                 CONFIGS.current_character = {}
             
-            # 修改：切换角色后异步预加载新角色的图片
-            self.update_status(f"正在切换到角色: {character_name}")
-            self.preload_manager.preload_character_images_async(character_name)
+            # 根据预加载设置决定是否预加载新角色的图片
+            preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+            preload_character = preloading_settings.get("preload_character", True)
+            
+            if preload_character:
+                self.update_status(f"正在切换到角色: {character_name}")
+                self.preload_manager.preload_character_images_async(character_name)
+            else:
+                self.update_status(f"切换到角色: {character_name} (预加载已禁用)")
             
             return True
         return False
@@ -698,13 +700,6 @@ class ManosabaCore:
         """更新状态（供外部调用）"""
         if self.status_callback:
             self.status_callback(message)
-
-    def _hex_to_rgb(self, hex_color: str) -> tuple:
-        """将十六进制颜色转换为RGB元组"""
-        hex_color = hex_color.lstrip('#')
-        if len(hex_color) == 3:
-            hex_color = ''.join([c*2 for c in hex_color])
-        return tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
 
     def generate_preview(self) -> tuple:
         """生成预览图片和相关信息"""
@@ -784,7 +779,7 @@ class ManosabaCore:
             time.sleep(0.005)
             
         print("读取到图片" if image is not None else "", "读取到文本" if text.strip() else "")
-        # 情感匹配处理：仅当启用且只有文本内容时
+        # 情感匹配处理
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
 
         if (sentiment_settings.get("enabled", False) and 
@@ -810,9 +805,15 @@ class ManosabaCore:
             return "错误: 没有文本或图像"
 
         try:
-            # 重新计算左上右下
-            bottom_right=(CONFIGS.config.BOX_RECT[1][0],self._current_base_image.height-40)
-            top_left=(CONFIGS.config.BOX_RECT[0][0],bottom_right[1]-CONFIGS.config.BOX_HEIGHT)
+            # 从样式配置获取文本框区域
+            textbox_x = CONFIGS.style.textbox_x
+            textbox_y = CONFIGS.style.textbox_y
+            textbox_width = CONFIGS.style.textbox_width
+            textbox_height = CONFIGS.style.textbox_height
+            
+            # 计算绘制区域（不再加上文本偏移）
+            top_left = (textbox_x, textbox_y)
+            bottom_right = (textbox_x + textbox_width, textbox_y + textbox_height)
 
             # 生成图片
             print(f"[{int((time.time()-start_time)*1000)}] 开始合成图片")
@@ -822,9 +823,6 @@ class ManosabaCore:
                 bottom_right=bottom_right,
                 text=text,
                 content_image=image,
-                image_align="center",
-                image_valign="middle",
-                image_padding=12,
             )
 
             print(f"[{int((time.time()-start_time)*1000)}] 图片合成完成")

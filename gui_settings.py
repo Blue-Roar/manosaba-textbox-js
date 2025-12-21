@@ -3,9 +3,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import threading
-import os
-import re
-from path_utils import get_available_fonts
+import copy
+import json
 from config import CONFIGS
 
 
@@ -16,6 +15,9 @@ class SettingsWindow:
         self.parent = parent
         self.core = core
         self.gui = gui
+        
+        # 标记配置是否已修改
+        self.settings_changed = False
 
         # 创建窗口
         self.window = tk.Toplevel(parent)
@@ -68,6 +70,7 @@ class SettingsWindow:
         ttk.Button(button_frame, text="应用", command=self._on_apply).pack(
             side=tk.RIGHT, padx=5
         )
+    
     def _setup_general_tab(self, parent):
         """设置常规设置标签页 - 添加滚动功能并修复滚动范围问题"""
         # 创建滚动容器
@@ -106,6 +109,47 @@ class SettingsWindow:
         content_frame = ttk.Frame(scrollable_frame, padding="10")
         content_frame.pack(fill=tk.BOTH, expand=True)
         
+        # ===== 新增：预加载设置 =====
+        preloading_frame = ttk.LabelFrame(content_frame, text="预加载设置", padding="10")
+        preloading_frame.pack(fill=tk.X, pady=5, padx=5)
+        
+        # 预加载角色图片
+        preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+        
+        self.preload_character_var = tk.BooleanVar(
+            value=preloading_settings.get("preload_character", True)
+        )
+        preload_character_cb = ttk.Checkbutton(
+            preloading_frame,
+            text="预加载角色图片",
+            variable=self.preload_character_var,
+            command=lambda: setattr(self, 'settings_changed', True)
+        )
+        preload_character_cb.grid(row=0, column=0, sticky=tk.W, pady=5, padx=(0, 20))
+        
+        # 预加载背景图片
+        self.preload_background_var = tk.BooleanVar(
+            value=preloading_settings.get("preload_background", True)
+        )
+        preload_background_cb = ttk.Checkbutton(
+            preloading_frame,
+            text="预加载背景图片",
+            variable=self.preload_background_var,
+            command=lambda: setattr(self, 'settings_changed', True)
+        )
+        preload_background_cb.grid(row=0, column=1, sticky=tk.W, pady=5)
+        
+        # 预加载说明
+        ttk.Label(preloading_frame, 
+                text="注：预加载可以提高图片生成速度，但会增加内存使用", 
+                font=("", 8), foreground="gray").grid(
+            row=1, column=0, columnspan=2, sticky=tk.W, pady=2
+        )
+        
+        # 配置列权重
+        preloading_frame.columnconfigure(0, weight=1)
+        preloading_frame.columnconfigure(1, weight=1)
+        
         # 获取情感匹配设置
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
         if sentiment_settings.get("display", False):
@@ -130,7 +174,7 @@ class SettingsWindow:
                 state="readonly"
             )
             ai_model_combo.grid(row=1, column=1, sticky=tk.EW, pady=5, padx=5)
-            ai_model_combo.bind("<<ComboboxSelected>>", self._setup_model_parameters)
+            ai_model_combo.bind("<<ComboboxSelected>>", lambda e: [self._setup_model_parameters(), setattr(self, 'settings_changed', True)])
         
             # 连接测试按钮
             self.test_btn = ttk.Button(
@@ -170,7 +214,7 @@ class SettingsWindow:
             compression_frame,
             text="启用像素削减压缩",
             variable=self.pixel_reduction_var,
-            command=self._on_setting_changed
+            command=lambda: setattr(self, 'settings_changed', True)
         )
         pixel_reduction_cb.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=5)
         
@@ -193,7 +237,7 @@ class SettingsWindow:
             orient=tk.HORIZONTAL
         )
         pixel_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        pixel_scale.bind("<ButtonRelease-1>", self._on_setting_changed)
+        pixel_scale.bind("<ButtonRelease-1>", lambda e: setattr(self, 'settings_changed', True))
         
         self.pixel_value_label = ttk.Label(pixel_frame, text=f"{self.pixel_reduction_ratio_var.get()}%")
         self.pixel_value_label.pack(side=tk.LEFT, padx=5)
@@ -211,7 +255,6 @@ class SettingsWindow:
         # 配置列权重，使内容可以水平扩展
         if sentiment_settings.get("display", False):
             compression_frame.columnconfigure(1, weight=1)
-
 
     def _setup_hotkey_tab(self, parent):
         """设置快捷键标签页"""
@@ -406,7 +449,7 @@ class SettingsWindow:
             state="readonly",
         )
         char_combo.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        char_combo.bind("<<ComboboxSelected>>", self._on_setting_changed)
+        char_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'settings_changed', True))
 
         # 配置列权重，使Combobox可以扩展填充
         parent.columnconfigure(1, weight=1)
@@ -425,8 +468,9 @@ class SettingsWindow:
         self.whitelist_text.pack(fill=tk.BOTH, expand=True, pady=5)
 
         # 从配置文件重新加载白名单内容
-        current_whitelist = CONFIGS.load_config("process_whitelist")
-        self.whitelist_text.insert('1.0', '\n'.join(current_whitelist))
+        # current_whitelist = CONFIGS.load_config("process_whitelist")
+        self.whitelist_text.insert('1.0', '\n'.join(CONFIGS.process_whitelist))
+        self.whitelist_text.edit_modified(False)  # 重置修改标志
 
     def _setup_model_parameters(self, event=None):
         """设置模型参数显示"""
@@ -461,7 +505,7 @@ class SettingsWindow:
             width=40
         )
         api_url_entry.grid(row=row, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=5)
-        api_url_entry.bind("<KeyRelease>", self._on_setting_changed)
+        api_url_entry.bind("<KeyRelease>", lambda e: setattr(self, 'settings_changed', True))
         row += 1
         
         # API Key
@@ -478,7 +522,7 @@ class SettingsWindow:
             show="*"
         )
         api_key_entry.grid(row=row, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=5)
-        api_key_entry.bind("<KeyRelease>", self._on_setting_changed)
+        api_key_entry.bind("<KeyRelease>", lambda e: setattr(self, 'settings_changed', True))
         row += 1
         
         # 模型名称
@@ -494,7 +538,7 @@ class SettingsWindow:
             width=40
         )
         model_name_entry.grid(row=row, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=2, padx=5)
-        model_name_entry.bind("<KeyRelease>", self._on_setting_changed)
+        model_name_entry.bind("<KeyRelease>", lambda e: setattr(self, 'settings_changed', True))
         row += 1
         
         # 模型描述
@@ -509,7 +553,6 @@ class SettingsWindow:
         
         self.params_frame.columnconfigure(1, weight=1)
 
-    
     def _start_key_config(self, key):
         """开始配置快捷键"""
         # 获取对应的变量
@@ -525,7 +568,8 @@ class SettingsWindow:
         self._config_thread = threading.Thread(
             target=self._key_config_listener,
             args=(key, ori_key),
-            daemon=True
+            daemon=True,
+            name="HotkeyCfgListener"
         )
         self._config_thread.start()
         
@@ -685,36 +729,6 @@ class SettingsWindow:
                 hotkey_var.set(ori_key)
             self.window.after(0, restore_original)
 
-    def _convert_pynput_keys_to_hotkey_string(self, key_list):
-        """将pynput按键列表转换为热键字符串"""
-        parts = []
-        for key in key_list:
-            key_str = str(key).lower()
-            if key_str in ['ctrl', 'control']:
-                parts.append('<ctrl>')
-            elif key_str in ['alt', 'menu']:
-                parts.append('<alt>')
-            elif key_str in ['shift']:
-                parts.append('<shift>')
-            elif key_str in ['win', 'windows', 'cmd', 'command']:
-                if CONFIGS.platform == 'darwin':
-                    parts.append('<cmd>')
-                else:
-                    parts.append('<win>')
-            elif key_str.startswith('f') and key_str[1:].isdigit():
-                parts.append(f'<{key_str}>')
-            elif key_str in ['space', 'enter', 'esc', 'tab', 'backspace', 'delete', 'insert', 
-                            'pageup', 'pagedown', 'home', 'end', 'left', 'right', 'up', 'down']:
-                parts.append(f'<{key_str}>')
-            elif len(key_str) == 1 and key_str.isalnum():
-                parts.append(key_str)
-            else:
-                # 其他键尝试直接使用
-                parts.append(key_str)
-        
-        # 组合成pynput格式的热键字符串
-        return '+'.join(parts)
-
     def _test_ai_connection(self):
         """测试AI连接 - 这会触发模型初始化"""
         selected_model = self.ai_model_var.get()
@@ -736,7 +750,7 @@ class SettingsWindow:
             success = self.core.test_ai_connection(selected_model, config)
             self.window.after(0, lambda: self._on_connection_test_complete(success))
         
-        threading.Thread(target=test_in_thread, daemon=True).start()
+        threading.Thread(target=test_in_thread, daemon=True,name="TestAiConn").start()
 
     def _on_connection_test_complete(self, success: bool):
         """连接测试完成回调"""
@@ -752,94 +766,132 @@ class SettingsWindow:
         else:
             self.test_btn.config(text="连接失败")
             # 连接失败时，禁用情感匹配
-            # self.sentiment_enabled_var.set(False)
-            self._on_setting_changed()
             # 2秒后恢复文本
             self.window.after(2000, lambda: self.test_btn.config(text="测试连接"))
 
     def _update_pixel_label(self, *args):
         """更新像素减少比例标签"""
         self.pixel_value_label.config(text=f"{self.pixel_reduction_ratio_var.get()}%")
-        self._on_setting_changed()
+        self.settings_changed = True
 
-    def _get_available_fonts(self):
-        """获取可用字体列表，优先显示项目字体"""
-        font_files = get_available_fonts()
-        project_fonts = []
+    def _collect_settings(self):
+        """收集所有设置到字典"""
+        settings = {
+            "preloading": {
+                "preload_character": self.preload_character_var.get(),
+                "preload_background": self.preload_background_var.get()
+            },
+            "image_compression": {
+                "pixel_reduction_enabled": self.pixel_reduction_var.get(),
+                "pixel_reduction_ratio": self.pixel_reduction_ratio_var.get()
+            },
+            "quick_characters": self._collect_quick_characters(),
+        }
 
-        # 直接从路径中提取字体文件名（不含扩展名）
-        for font_path in font_files:
-            if font_path:
-                # 获取文件名（不含路径和扩展名）
-                font_name = os.path.splitext(os.path.basename(font_path))[0]
-                project_fonts.append(font_name)
-        return project_fonts
-
-    def _on_setting_changed(self, event=None):
-        """设置改变时的回调"""
-        # 更新设置字典
-        if (CONFIGS.gui_settings["sentiment_matching"].get("display",False)):
-            # 更新情感匹配设置
-            if "sentiment_matching" not in CONFIGS.gui_settings:
-                CONFIGS.gui_settings["sentiment_matching"] = {}
-            
-            CONFIGS.gui_settings["sentiment_matching"]["ai_model"] = self.ai_model_var.get()
-            
-            # 保存模型配置
-            if "model_configs" not in CONFIGS.gui_settings["sentiment_matching"]:
-                CONFIGS.gui_settings["sentiment_matching"]["model_configs"] = {}
-                
+        # 如果显示情感匹配设置
+        if CONFIGS.gui_settings["sentiment_matching"].get("display", False):
             selected_model = self.ai_model_var.get()
-            CONFIGS.gui_settings["sentiment_matching"]["model_configs"][selected_model] = {
-                "base_url": self.api_url_var.get(),
-                "api_key": self.api_key_var.get(),
-                "model": self.model_name_var.get()
+            settings["sentiment_matching"] = {
+                "display": True,
+                "enabled": CONFIGS.gui_settings["sentiment_matching"].get("enabled", False),
+                "ai_model": selected_model,
+                "model_configs": {
+                    selected_model: {
+                        "base_url": self.api_url_var.get(),
+                        "api_key": self.api_key_var.get(),
+                        "model": self.model_name_var.get()
+                    }
+                }
             }
-            
-        # 更新图像压缩设置
-        if "image_compression" not in CONFIGS.gui_settings:
-            CONFIGS.gui_settings["image_compression"] = {}
+        else:
+            settings["sentiment_matching"] = CONFIGS.gui_settings.get("sentiment_matching", {})
         
-        CONFIGS.gui_settings["image_compression"]["pixel_reduction_enabled"] = self.pixel_reduction_var.get()
-        CONFIGS.gui_settings["image_compression"]["pixel_reduction_ratio"] = self.pixel_reduction_ratio_var.get()
+        return settings
 
-        # 更新快速角色设置
+    def _collect_quick_characters(self):
+        """收集快速角色设置"""
         quick_characters = {}
         for i in range(1, 7):
             char_var = getattr(self, f"character_{i}_char_var")
             char_display = char_var.get()
-            # 从显示文本中提取角色ID
             if char_display and "(" in char_display and ")" in char_display:
                 char_id = char_display.split("(")[-1].rstrip(")")
                 quick_characters[f"character_{i}"] = char_id
             else:
                 quick_characters[f"character_{i}"] = ""
+        return quick_characters
 
-        CONFIGS.gui_settings["quick_characters"] = quick_characters
+    def _collect_hotkeys(self):
+        """收集热键设置"""
+        new_hotkeys = {}
+        
+        # 收集普通快捷键
+        for key in ['start_generate', 'next_character', 'prev_character', 'next_emotion', 'prev_emotion', 
+                    'next_background', 'prev_background', 'toggle_listener']:
+            var_name = f"{key}_hotkey_var"
+            if hasattr(self, var_name):
+                hotkey_var = getattr(self, var_name)
+                hotkey_value = hotkey_var.get()
+                # 如果用户输入了"请输入按键"，跳过保存
+                if hotkey_value != "请输入按键" and hotkey_value != "请按下按键组合...":
+                    new_hotkeys[key] = hotkey_value
+        
+        return new_hotkeys
+
+    def _collect_whitelist(self):
+        """收集进程白名单设置"""
+        text_content = self.whitelist_text.get('1.0', tk.END).strip()
+        processes = [p.strip() for p in text_content.split('\n') if p.strip()]
+        return processes
 
     def _on_save(self):
         """保存设置并关闭窗口"""
-        if self._on_apply():
-            self.window.destroy()
+        self._on_apply()
+        self.window.destroy()
 
     def _on_apply(self):
         """应用设置但不关闭窗口"""
-        # 验证颜色值
-        if not self._validate_color_format(self.text_color_var.get()):
-            messagebox.showerror("颜色错误", "颜色格式无效，请输入有效的十六进制颜色值（例如：#FFFFFF）")
-            return False
-        
-        self._on_setting_changed()
+        # 检查并保存常规设置
+        if self.settings_changed:
+            self.settings_changed = False
+            new_settings = self._collect_settings()
+            
+            # 获取最新的预加载设置
+            old_PS = CONFIGS.gui_settings.get("preloading", {}).copy()
+            new_PS = new_settings.get("preloading", {})
 
-        # 保存设置到文件
-        CONFIGS.save_gui_settings()
-        self._save_whitelist_settings()
-        success = self._save_hotkey_settings()
-
-        # 应用设置时检查是否需要重新初始化AI模型
-        self.core._reinitialize_sentiment_analyzer_if_needed()
-        
-        return success
+            # 检查预加载设置是否从关闭变为开启（更精确的比较）
+            old_preload_char = old_PS.get("preload_character", True)
+            new_preload_char = new_PS.get("preload_character", True)
+            
+            old_preload_bg = old_PS.get("preload_background", True)
+            new_preload_bg = new_PS.get("preload_background", True)
+                        
+            # 更新CONFIGS
+            CONFIGS.gui_settings.update(new_settings)
+            
+            # 保存到文件
+            if CONFIGS.save_gui_settings():
+                print("配置更新")
+                # 如果角色预加载从关闭变为开启
+                if (old_preload_char != new_preload_char and new_preload_char):
+                    # 触发预加载当前角色
+                    current_character = CONFIGS.get_character()
+                    self.gui.core.preload_manager.preload_character_images_async(current_character)
+                
+                # 如果背景预加载从关闭变为开启
+                if (old_preload_bg != new_preload_bg and new_preload_bg):
+                    self.gui.core.preload_manager.preload_backgrounds_async()
+                
+            # 应用设置时检查是否需要重新初始化AI模型
+            self.core._reinitialize_sentiment_analyzer_if_needed()
+            
+        if CONFIGS.save_process_whitelist(self._collect_whitelist()):
+            print("白名单更新")
+            CONFIGS.process_whitelist=CONFIGS.load_config("process_whitelist")
+        if CONFIGS.save_keymap(self._collect_hotkeys()):
+            print("热键更新")
+            CONFIGS.keymap = CONFIGS.load_config("keymap")
 
     def _on_close(self):
         """处理窗口关闭事件"""
@@ -849,71 +901,3 @@ class SettingsWindow:
         
         # 销毁窗口
         self.window.destroy()
-
-    def _save_hotkey_settings(self):
-        """保存快捷键设置"""
-        # 构建当前平台的新快捷键字典
-        new_hotkeys = {}
-        
-        # 收集普通快捷键 - 修复：使用正确的变量名
-        for key in ['start_generate', 'next_character', 'prev_character', 'next_emotion', 'prev_emotion', 
-                    'next_background', 'prev_background', 'toggle_listener']:
-            var_name = f"{key}_hotkey_var"
-            if hasattr(self, var_name):
-                hotkey_var = getattr(self, var_name)
-                hotkey_value = hotkey_var.get()
-                # 如果用户输入了"请输入按键"，跳过保存
-                if hotkey_value != "请输入按键":
-                    new_hotkeys[key] = hotkey_value
-        
-        # 修复：确保保存到配置文件
-        success = CONFIGS.save_keymap(new_hotkeys)
-        if success:
-            # 更新当前配置中的快捷键
-            CONFIGS.keymap.update(new_hotkeys)
-            print(f"热键已保存: {new_hotkeys}")
-        
-        return success
-        
-    def _save_whitelist_settings(self):
-        """保存进程白名单设置"""
-        # 从文本框获取内容
-        text_content = self.whitelist_text.get('1.0', tk.END).strip()
-        processes = [p.strip() for p in text_content.split('\n') if p.strip()]
-
-        # 使用config_loader保存白名单
-        success = CONFIGS.save_process_whitelist(processes)
-
-        if success:
-            # 更新core中的白名单
-            CONFIGS.process_whitelist = processes
-            return True
-        else:
-            return False
-
-    def _update_color_preview(self, *args):
-        """更新颜色预览标签"""
-        color_value = self.text_color_var.get()
-        # 验证颜色格式
-        if self._validate_color_format(color_value):
-            # 更新预览标签背景色
-            self.color_preview_label.configure(background=color_value)
-        else:
-            # 如果颜色格式无效，显示默认颜色（保持原样，不更新）
-            pass  # 不更新预览，保持之前的状态
-    
-    def _update_bracket_color_preview(self, *args):
-        """更新强调颜色预览标签"""
-        color_value = self.bracket_color_var.get()
-        # 验证颜色格式
-        if self._validate_color_format(color_value):
-            # 更新预览标签背景色
-            self.bracket_color_preview_label.configure(background=color_value)
-        else:
-            # 如果颜色格式无效，显示默认颜色（保持原样，不更新）
-            pass  # 不更新预览，保持之前的状态
-
-    def _validate_color_format(self, color_value):
-        """验证颜色格式是否为有效的十六进制颜色"""
-        pattern = r'^#([A-Fa-f0-9]{6})$'
-        return re.match(pattern, color_value) is not None
