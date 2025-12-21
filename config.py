@@ -79,6 +79,18 @@ class StyleConfig:
                 "layer": 3  # 默认在最下层
             }
         ]
+
+        # 粘贴图像设置
+        self.paste_image_settings = {
+            "enabled": "off",  # off, mixed
+            "x": 0,
+            "y": 0,
+            "width": 300,
+            "height": 200,
+            "fill_mode": "fit",  # fit, width, height
+            "align": "center",  # left, center, right
+            "valign": "middle"  # top, middle, bottom
+        }
     
     def get_bracket_color(self, character_name=None):
         """获取强调色，根据是否使用角色颜色返回不同的颜色"""
@@ -348,7 +360,8 @@ class ConfigLoader:
             return {
                 "preloading": {
                 "preload_character": True,
-                "preload_background": True
+                "preload_background": True,
+                "background_cache_width": 2560
                 },
                 "image_compression": {
                     "pixel_reduction_enabled": True,

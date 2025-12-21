@@ -181,6 +181,8 @@ class PreloadManager:
         def preload_task():
             try:
                 self.update_status("正在预加载背景图片...")
+                clear_cache("background")
+                
                 background_count = CONFIGS.background_count
                 
                 for background_index in range(1, background_count + 1):
@@ -252,7 +254,7 @@ def load_image_cached(image_path: str) -> Image.Image:
 
 # 安全加载背景图片（文件不存在时返回默认值）
 def load_background_safe(background_name: str, default_size: tuple = (800, 600), default_color: tuple = (100, 100, 200)) -> Image.Image:
-    """安全加载背景图片，文件不存在时返回默认图片，加载后等比缩放到宽度2560"""
+    """安全加载背景图片，文件不存在时返回默认图片，加载后等比缩放到配置的宽度"""
     # 获取背景图片路径
     background_path = get_background_path(background_name)
     
@@ -262,8 +264,11 @@ def load_background_safe(background_name: str, default_size: tuple = (800, 600),
             if os.path.exists(background_path):
                 img = Image.open(background_path).convert("RGBA")
                 
-                # 等比缩放到宽度2560
-                target_width = 2560
+                # 从配置中获取目标宽度
+                preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+                target_width = preloading_settings.get("background_cache_width", 2560)
+                
+                # 等比缩放到目标宽度
                 if img.width != target_width:
                     width_ratio = target_width / img.width
                     new_height = int(img.height * width_ratio)
@@ -274,11 +279,14 @@ def load_background_safe(background_name: str, default_size: tuple = (800, 600),
                 raise FileNotFoundError(f"背景图片文件不存在: {background_path}")
         return _background_cache[cache_key].copy()
     except FileNotFoundError:
-        # 创建默认图片，并缩放到宽度2560
+        # 创建默认图片
         default_img = Image.new("RGBA", default_size, default_color)
         
-        # 等比缩放到宽度2560
-        target_width = 2560
+        # 从配置中获取目标宽度
+        preloading_settings = CONFIGS.gui_settings.get("preloading", {})
+        target_width = preloading_settings.get("background_cache_width", 2560)
+        
+        # 等比缩放到目标宽度
         if default_img.width != target_width:
             width_ratio = target_width / default_img.width
             new_height = int(default_img.height * width_ratio)

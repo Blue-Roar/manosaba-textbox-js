@@ -133,6 +133,9 @@ class StyleWindow:
         # 文本位置设置
         self._setup_text_settings(content_frame)
         
+        # 粘贴图像设置
+        self._setup_paste_image_settings(content_frame)
+
         # 图片组件设置
         self._setup_image_components(content_frame)
         
@@ -379,33 +382,33 @@ class StyleWindow:
         region_frame = ttk.Frame(text_frame)
         region_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(region_frame, text="文本区域:", width=10).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(region_frame, text="文本区域:", width=7).pack(side=tk.LEFT, padx=(0, 5))
         
         # X坐标
-        ttk.Label(region_frame, text="X:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(region_frame, text="X", width=1).pack(side=tk.LEFT, padx=(0, 4))
         self.textbox_x_var = tk.StringVar(value=str(CONFIGS.style.textbox_x))
-        x_entry = ttk.Entry(region_frame, textvariable=self.textbox_x_var, width=6)
+        x_entry = ttk.Entry(region_frame, textvariable=self.textbox_x_var, width=5)
         x_entry.pack(side=tk.LEFT, padx=(0, 5))
         x_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
         # Y坐标
-        ttk.Label(region_frame, text="Y:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(region_frame, text="Y", width=1).pack(side=tk.LEFT, padx=(0, 4))
         self.textbox_y_var = tk.StringVar(value=str(CONFIGS.style.textbox_y))
-        y_entry = ttk.Entry(region_frame, textvariable=self.textbox_y_var, width=6)
+        y_entry = ttk.Entry(region_frame, textvariable=self.textbox_y_var, width=5)
         y_entry.pack(side=tk.LEFT, padx=(0, 5))
         y_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
         # 宽度
-        ttk.Label(region_frame, text="宽:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(region_frame, text="宽", width=2).pack(side=tk.LEFT, padx=(0, 2))
         self.textbox_width_var = tk.StringVar(value=str(CONFIGS.style.textbox_width))
-        width_entry = ttk.Entry(region_frame, textvariable=self.textbox_width_var, width=6)
+        width_entry = ttk.Entry(region_frame, textvariable=self.textbox_width_var, width=4)
         width_entry.pack(side=tk.LEFT, padx=(0, 5))
         width_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
         # 高度
-        ttk.Label(region_frame, text="高:", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(region_frame, text="高", width=2).pack(side=tk.LEFT, padx=(0, 2))
         self.textbox_height_var = tk.StringVar(value=str(CONFIGS.style.textbox_height))
-        height_entry = ttk.Entry(region_frame, textvariable=self.textbox_height_var, width=6)
+        height_entry = ttk.Entry(region_frame, textvariable=self.textbox_height_var, width=4)
         height_entry.pack(side=tk.LEFT, padx=(0, 5))
         height_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
         
@@ -422,10 +425,10 @@ class StyleWindow:
         align_frame = ttk.Frame(text_frame)
         align_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(align_frame, text="文本对齐:", width=10).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(align_frame, text="文本对齐:", width=7).pack(side=tk.LEFT, padx=(0, 5))
         
         # 水平对齐
-        ttk.Label(align_frame, text="水平:", width=4).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(align_frame, text="水平", width=4).pack(side=tk.LEFT, padx=(0, 2))
         
         self.text_align_var = tk.StringVar(value=CONFIGS.style.text_align)
         align_mapping = {"left": "左", "center": "中", "right": "右"}
@@ -435,14 +438,14 @@ class StyleWindow:
             textvariable=self.text_align_var,
             values=["左", "中", "右"],
             state="readonly",
-            width=5
+            width=6
         )
         align_combo.set(align_display)
         align_combo.pack(side=tk.LEFT, padx=(0, 15))
         align_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'style_changed', True))
         
         # 垂直对齐
-        ttk.Label(align_frame, text="垂直:", width=4).pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(align_frame, text="垂直", width=5).pack(side=tk.LEFT, padx=(0, 2))
         
         self.text_valign_var = tk.StringVar(value=CONFIGS.style.text_valign)
         valign_mapping = {"top": "上", "middle": "中", "bottom": "下"}
@@ -452,7 +455,7 @@ class StyleWindow:
             textvariable=self.text_valign_var,
             values=["上", "中", "下"],
             state="readonly",
-            width=5
+            width=6
         )
         valign_combo.set(valign_display)
         valign_combo.pack(side=tk.LEFT)
@@ -554,6 +557,280 @@ class StyleWindow:
             delattr(self, '_original_display')
         if hasattr(self, '_preview_with_box'):
             delattr(self, '_preview_with_box')
+
+    def _setup_paste_image_settings(self, parent):
+        """设置粘贴图像设置"""
+        paste_image_frame = ttk.LabelFrame(parent, text="粘贴图像设置", padding="10")
+        paste_image_frame.pack(fill=tk.X, pady=10)
+        
+        # 第一行：生效情况选择
+        enabled_frame = ttk.Frame(paste_image_frame)
+        enabled_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(enabled_frame, text="生效情况:", width=8).pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 创建生效情况变量
+        paste_enabled_var = tk.StringVar(value=CONFIGS.style.paste_image_settings.get("enabled", "off"))
+        
+        # 存储单选按钮变量
+        self.paste_radio_vars = {}
+        
+        # 选项列表：始终、混合内容、仅图片、关闭
+        options = [
+            ("始终", "always"),
+            ("混合内容", "mixed"),
+            ("关闭", "off")
+        ]
+        
+        # 创建一个框架来容纳所有单选按钮
+        radio_frame = ttk.Frame(enabled_frame)
+        radio_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        for option in options:
+            text, value = option[0], option[1]
+            # 使用索引作为键
+            var = tk.BooleanVar(value=(paste_enabled_var.get() == value))
+            self.paste_radio_vars[value] = var
+            
+            radio = ttk.Radiobutton(
+                radio_frame,
+                text=text,
+                variable=var,
+                width=7,
+                command=lambda v=value: self._on_paste_enabled_changed(v)
+            )
+            radio.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # 存储主变量
+        self.paste_enabled_var = paste_enabled_var
+        
+        # 第二行：位置和大小设置
+        position_frame = ttk.Frame(paste_image_frame)
+        position_frame.pack(fill=tk.X, pady=5)
+        
+        # 创建一个框架来容纳所有位置相关的控件，包括预览按钮
+        controls_frame = ttk.Frame(position_frame)
+        controls_frame.pack(fill=tk.X)
+        
+        # 在左侧创建位置设置区域
+        position_controls_frame = ttk.Frame(controls_frame)
+        position_controls_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        ttk.Label(position_controls_frame, text="图片区域:", width=8).pack(side=tk.LEFT, padx=(0, 5))
+        
+        # X坐标
+        ttk.Label(position_controls_frame, text="X", width=1).pack(side=tk.LEFT, padx=(0, 4))
+        self.paste_image_x_var = tk.StringVar(value=str(CONFIGS.style.paste_image_settings.get("x", 0)))
+        paste_x_entry = ttk.Entry(position_controls_frame, textvariable=self.paste_image_x_var, width=5)
+        paste_x_entry.pack(side=tk.LEFT, padx=(0, 5))
+        paste_x_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # Y坐标
+        ttk.Label(position_controls_frame, text="Y", width=1).pack(side=tk.LEFT, padx=(0, 4))
+        self.paste_image_y_var = tk.StringVar(value=str(CONFIGS.style.paste_image_settings.get("y", 0)))
+        paste_y_entry = ttk.Entry(position_controls_frame, textvariable=self.paste_image_y_var, width=5)
+        paste_y_entry.pack(side=tk.LEFT, padx=(0, 5))
+        paste_y_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 宽度
+        ttk.Label(position_controls_frame, text="宽", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.paste_image_width_var = tk.StringVar(value=str(CONFIGS.style.paste_image_settings.get("width", 300)))
+        paste_width_entry = ttk.Entry(position_controls_frame, textvariable=self.paste_image_width_var, width=4)
+        paste_width_entry.pack(side=tk.LEFT, padx=(0, 5))
+        paste_width_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 高度
+        ttk.Label(position_controls_frame, text="高", width=2).pack(side=tk.LEFT, padx=(0, 2))
+        self.paste_image_height_var = tk.StringVar(value=str(CONFIGS.style.paste_image_settings.get("height", 200)))
+        paste_height_entry = ttk.Entry(position_controls_frame, textvariable=self.paste_image_height_var, width=4)
+        paste_height_entry.pack(side=tk.LEFT, padx=(0, 5))
+        paste_height_entry.bind("<KeyRelease>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 预览按钮（放在第二行的最右边）
+        paste_preview_btn = ttk.Button(
+            controls_frame,
+            text="预览区域",
+            command=self._show_paste_image_preview,
+            width=8
+        )
+        paste_preview_btn.pack(side=tk.RIGHT, padx=(10, 0))
+        
+        # 第三行：填充方式
+        fill_mode_frame = ttk.Frame(paste_image_frame)
+        fill_mode_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(fill_mode_frame, text="填充方式:", width=8).pack(side=tk.LEFT, padx=(0, 5))
+        
+        self.paste_fill_mode_var = tk.StringVar(value=CONFIGS.style.paste_image_settings.get("fill_mode", "fit"))
+        
+        # 使用Frame将选项放在一行
+        fill_options_frame = ttk.Frame(fill_mode_frame)
+        fill_options_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        fill_modes = [
+            ("适应边界", "fit"),
+            ("适应宽度", "width"),
+            ("适应高度", "height")
+        ]
+        
+        for text, value in fill_modes:
+            ttk.Radiobutton(
+                fill_options_frame,
+                text=text,
+                variable=self.paste_fill_mode_var,
+                value=value,
+                width=7,
+                command=lambda: setattr(self, 'style_changed', True)
+            ).pack(side=tk.LEFT, padx=(0,10))
+        
+        # 第四行：对齐设置
+        align_frame = ttk.Frame(paste_image_frame)
+        align_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(align_frame, text="对齐方式:", width=8).pack(side=tk.LEFT, padx=(0, 5))
+        
+        # 水平对齐
+        ttk.Label(align_frame, text="水平", width=4).pack(side=tk.LEFT, padx=(0, 2))
+        
+        self.paste_align_var = tk.StringVar(value=CONFIGS.style.paste_image_settings.get("align", "center"))
+        paste_align_mapping = {"left": "左", "center": "中", "right": "右"}
+        paste_align_display = paste_align_mapping.get(self.paste_align_var.get(), "中")
+        paste_align_combo = ttk.Combobox(
+            align_frame,
+            textvariable=self.paste_align_var,
+            values=["左", "中", "右"],
+            state="readonly",
+            width=6
+        )
+        paste_align_combo.set(paste_align_display)
+        paste_align_combo.pack(side=tk.LEFT, padx=(0, 15))
+        paste_align_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 垂直对齐
+        ttk.Label(align_frame, text="垂直", width=5).pack(side=tk.LEFT, padx=(0, 2))
+        
+        self.paste_valign_var = tk.StringVar(value=CONFIGS.style.paste_image_settings.get("valign", "middle"))
+        paste_valign_mapping = {"top": "上", "middle": "中", "bottom": "下"}
+        paste_valign_display = paste_valign_mapping.get(self.paste_valign_var.get(), "中")
+        paste_valign_combo = ttk.Combobox(
+            align_frame,
+            textvariable=self.paste_valign_var,
+            values=["上", "中", "下"],
+            state="readonly",
+            width=6
+        )
+        paste_valign_combo.set(paste_valign_display)
+        paste_valign_combo.pack(side=tk.LEFT)
+        paste_valign_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'style_changed', True))
+        
+        # 说明
+        ttk.Label(
+            paste_image_frame,
+            text="注：混合内容指同时含有图片和文本",
+            font=("", 8),
+            foreground="gray"
+        ).pack(anchor=tk.W, pady=(5, 0))
+        
+    def _on_paste_enabled_changed(self, selected_option):
+        """粘贴图像生效情况改变事件"""
+        # 更新主变量
+        self.paste_enabled_var.set(selected_option)
+        
+        # 更新所有单选按钮状态
+        for option, var in self.paste_radio_vars.items():
+            var.set(selected_option == option)
+        
+        # 标记样式已修改
+        self.style_changed = True
+
+    def _show_paste_image_preview(self):
+        """显示粘贴图像区域预览"""
+        if not self.gui:
+            return
+        
+        if hasattr(self, '_is_paste_previewing') and self._is_paste_previewing:
+            self._clear_paste_image_preview()
+
+        # 获取预览管理器
+        preview_manager = self.gui.preview_manager
+        
+        # 确保有显示图片
+        if not preview_manager.displayed_image:
+            messagebox.showinfo("提示", "请先生成预览图")
+            return
+        
+        # 获取当前缩放比例
+        zoom_level = preview_manager.zoom_level
+        
+        # 创建显示图的副本
+        display_copy = preview_manager.displayed_image.copy()
+        draw = ImageDraw.Draw(display_copy, 'RGBA')
+        
+        # 计算粘贴图像区域
+        try:
+            paste_x = int(self.paste_image_x_var.get() or 0)
+            paste_y = int(self.paste_image_y_var.get() or 0)
+            paste_width = int(self.paste_image_width_var.get() or 300)
+            paste_height = int(self.paste_image_height_var.get() or 200)
+        except ValueError:
+            messagebox.showerror("错误", "请输入有效的数字")
+            return
+        
+        # 将实际区域坐标缩放到当前显示图的大小
+        scaled_x1 = int(paste_x * zoom_level)
+        scaled_y1 = int(paste_y * zoom_level)
+        scaled_x2 = int((paste_x + paste_width) * zoom_level)
+        scaled_y2 = int((paste_y + paste_height) * zoom_level)
+        
+        # 确保坐标在显示图范围内
+        img_width, img_height = display_copy.size
+        if scaled_x1 < 0:
+            scaled_x1 = 0
+        if scaled_y1 < 0:
+            scaled_y1 = 0
+        if scaled_x2 > img_width:
+            scaled_x2 = img_width
+        if scaled_y2 > img_height:
+            scaled_y2 = img_height
+        
+        # 绘制矩形边框（蓝色，宽度3）
+        draw.rectangle([scaled_x1, scaled_y1, scaled_x2, scaled_y2], 
+                    outline=(0, 0, 255, 255), width=3)
+        
+        # 绘制半透明填充
+        draw.rectangle([scaled_x1, scaled_y1, scaled_x2, scaled_y2], 
+                    fill=(0, 0, 255, 50))
+        
+        # 保存当前显示状态
+        self._original_paste_display = preview_manager.displayed_image
+        self._display_with_paste_box = display_copy
+        
+        # 更新显示图
+        preview_manager.displayed_image = display_copy
+        preview_manager._update_displayed_image()
+        
+        # 标记正在预览
+        self._is_paste_previewing = True
+
+    def _clear_paste_image_preview(self):
+        """清除粘贴图像区域预览"""
+        if not hasattr(self, '_is_paste_previewing') or not self._is_paste_previewing:
+            return
+        
+        # 获取预览管理器
+        preview_manager = self.gui.preview_manager
+        
+        # 恢复原始预览图
+        if hasattr(self, '_original_paste_display') and self._original_paste_display:
+            preview_manager.displayed_image = self._original_paste_display
+            preview_manager._update_displayed_image()
+        
+        # 清除标记
+        self._is_paste_previewing = False
+        if hasattr(self, '_original_paste_display'):
+            delattr(self, '_original_paste_display')
+        if hasattr(self, '_display_with_paste_box'):
+            delattr(self, '_display_with_paste_box')
             
     def _setup_image_components(self, parent):
         """设置图片组件设置"""
@@ -1077,7 +1354,42 @@ class StyleWindow:
         
         if hasattr(self, 'text_valign_var'):
             self.text_valign_var.set(valign_display)
+            
+        # 粘贴图像设置
+        paste_settings = CONFIGS.style.paste_image_settings
         
+        # 更新生效情况
+        paste_settings = CONFIGS.style.paste_image_settings
+        current_enabled = paste_settings.get("enabled", "off")
+        self.paste_enabled_var.set(current_enabled)
+
+        # 更新所有单选按钮状态
+        if hasattr(self, 'paste_radio_vars'):
+            for option, var in self.paste_radio_vars.items():
+                var.set(current_enabled == option)
+        
+        # 更新位置和大小
+        self.paste_image_x_var.set(str(paste_settings.get("x", 0)))
+        self.paste_image_y_var.set(str(paste_settings.get("y", 0)))
+        self.paste_image_width_var.set(str(paste_settings.get("width", 300)))
+        self.paste_image_height_var.set(str(paste_settings.get("height", 200)))
+        
+        # 更新填充方式
+        self.paste_fill_mode_var.set(paste_settings.get("fill_mode", "fit"))
+        
+        # 更新对齐方式（从英文转换为中文显示）
+        align_mapping = {"left": "左", "center": "中", "right": "右"}
+        valign_mapping = {"top": "上", "middle": "中", "bottom": "下"}
+        
+        paste_align_display = align_mapping.get(paste_settings.get("align", "center"), "中")
+        paste_valign_display = valign_mapping.get(paste_settings.get("valign", "middle"), "中")
+        
+        if hasattr(self, 'paste_align_var'):
+            self.paste_align_var.set(paste_align_display)
+        
+        if hasattr(self, 'paste_valign_var'):
+            self.paste_valign_var.set(paste_valign_display)
+
         # 完全重新加载图片组件
         self._load_image_components()
     
@@ -1229,6 +1541,22 @@ class StyleWindow:
         text_align_mapping = {"左": "left", "中": "center", "右": "right"}
         text_valign_mapping = {"上": "top", "中": "middle", "下": "bottom"}
         
+        # 收集粘贴图像设置
+        paste_enabled_value = self.paste_enabled_var.get()
+        align_mapping = {"左": "left", "中": "center", "右": "right"}
+        valign_mapping = {"上": "top", "中": "middle", "下": "bottom"}
+        
+        paste_image_settings = {
+            "enabled": paste_enabled_value,
+            "x": int(self.paste_image_x_var.get() or 0),
+            "y": int(self.paste_image_y_var.get() or 0),
+            "width": int(self.paste_image_width_var.get() or 800),
+            "height": int(self.paste_image_height_var.get() or 400),
+            "fill_mode": self.paste_fill_mode_var.get(),
+            "align": align_mapping.get(self.paste_align_var.get(), "center"),
+            "valign": valign_mapping.get(self.paste_valign_var.get(), "middle")
+        }
+
         # 收集其他样式设置
         style_data = {
             "aspect_ratio": self.aspect_ratio_var.get() if hasattr(self, 'aspect_ratio_var') else "3:1",
@@ -1249,6 +1577,7 @@ class StyleWindow:
             "image_components": image_components
         }
         
+        style_data.update({"paste_image_settings": paste_image_settings})
         return style_data
     
     def _on_apply(self):

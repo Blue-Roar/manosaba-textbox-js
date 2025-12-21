@@ -109,7 +109,7 @@ class SettingsWindow:
         content_frame = ttk.Frame(scrollable_frame, padding="10")
         content_frame.pack(fill=tk.BOTH, expand=True)
         
-        # ===== 新增：预加载设置 =====
+        # 预加载设置
         preloading_frame = ttk.LabelFrame(content_frame, text="预加载设置", padding="10")
         preloading_frame.pack(fill=tk.X, pady=5, padx=5)
         
@@ -139,11 +139,31 @@ class SettingsWindow:
         )
         preload_background_cb.grid(row=0, column=1, sticky=tk.W, pady=5)
         
+        # 背景图缓存宽度选择
+        ttk.Label(preloading_frame, text="背景图宽度:").grid(
+            row=1, column=0, sticky=tk.W, pady=5
+        )
+        
+        # 宽度选项
+        width_options = [2560, 1920, 1440, 720]
+        self.background_width_var = tk.IntVar(
+            value=preloading_settings.get("background_cache_width", 2560)
+        )
+        width_combo = ttk.Combobox(
+            preloading_frame,
+            textvariable=self.background_width_var,
+            values=width_options,
+            state="readonly",
+            width=10
+        )
+        width_combo.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
+        width_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'settings_changed', True))
+        
         # 预加载说明
         ttk.Label(preloading_frame, 
                 text="注：预加载可以提高图片生成速度，但会增加内存使用", 
                 font=("", 8), foreground="gray").grid(
-            row=1, column=0, columnspan=2, sticky=tk.W, pady=2
+            row=2, column=0, columnspan=2, sticky=tk.W, pady=2
         )
         
         # 配置列权重
@@ -779,7 +799,8 @@ class SettingsWindow:
         settings = {
             "preloading": {
                 "preload_character": self.preload_character_var.get(),
-                "preload_background": self.preload_background_var.get()
+                "preload_background": self.preload_background_var.get(),
+                "background_cache_width": self.background_width_var.get()
             },
             "image_compression": {
                 "pixel_reduction_enabled": self.pixel_reduction_var.get(),

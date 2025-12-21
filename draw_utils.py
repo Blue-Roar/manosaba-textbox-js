@@ -40,30 +40,18 @@ bracket_pairs = {
 
 def draw_content_auto(
     image_source: Union[str, Image.Image],
-    top_left: Tuple[int, int],
-    bottom_right: Tuple[int, int],
     text: Optional[str] = None,
     content_image: Optional[Image.Image] = None,
+    fill_mode: str = "fit",
     image_align: Align = "center",
     image_valign: VAlign = "middle",
     line_spacing: float = 0.15,
     image_padding: int = 12,
-    min_image_ratio: float = 0.2,  # 图片区域最小比例
+    min_image_ratio: float = 0.2,
+    text_rect: Optional[Tuple[int, int, int, int]] = None,  # 文本区域 (x1, y1, x2, y2)
+    image_rect: Optional[Tuple[int, int, int, int]] = None,  # 图片区域 (x1, y1, x2, y2)
+    image_paste_mode: str = "off"  # off, always, mixed
 ) -> bytes:
-    # 在指定矩形内自适应绘制文本和/或图片
-    # 图片放置在右侧，文字放置在左侧
-    
-    # 参数:
-    #     image_source: 背景图片或路径
-    #     top_left: 区域左上角坐标
-    #     bottom_right: 区域右下角坐标
-    #     text: 要绘制的文本
-    #     content_image: 要绘制的图片
-    #     image_align: 图片水平对齐方式
-    #     image_valign: 图片垂直对齐方式
-    #     line_spacing: 行间距比例
-    #     image_padding: 图片内边距
-    #     min_image_ratio: 图片区域最小比例
 
     PLACEHOLDER_CHAR = "□"  # 用来占位 emoji 的字符
     EMOJI_FALLBACK_CHAR = "□"  # emoji 加载失败时使用的替代字符
@@ -285,76 +273,78 @@ def draw_content_auto(
 
     draw = ImageDraw.Draw(img)
 
-    x1, y1 = top_left
-    x2, y2 = bottom_right
-    if not (x2 > x1 and y2 > y1):
-        raise ValueError("无效的区域。")
-
-    region_w, region_h = x2 - x1, y2 - y1
+    # 确定最终使用的文本区域和图片区域
+    final_text_rect = text_rect
+    final_image_rect = image_rect
     
-    # 计算文字区域和图片区域
-    if content_image is not None and text is not None:
-        # 提取emoji并替换为占位符
-        placeholder_text, emoji_list = extract_emojis_and_replace(text, PLACEHOLDER_CHAR)
-        text_length = len(placeholder_text)
-        
-        # 获取图片尺寸和特征
-        cw, ch = content_image.size
-        image_aspect = cw / ch if ch > 0 else 1
-        
-        # 根据图片宽高比决定基础比例
-        if image_aspect > 2:
-            # 宽幅图片：需要更多宽度
-            base_image_ratio = 0.6
-        elif image_aspect > 1:
-            # 横版图片
-            base_image_ratio = 0.5
-        else:
-            # 竖版或方形图片
-            base_image_ratio = 0.4
-        
-        # 根据文本长度调整
-        if text_length <= 10:
-            # 短文本：加大图片比例
-            image_ratio = min(base_image_ratio + 0.2, 0.7)
-        elif text_length <= 30:
-            # 中等文本：保持基础比例
-            image_ratio = base_image_ratio
-        else:
-            # 长文本：减小图片比例
-            image_ratio = max(base_image_ratio - 0.1, min_image_ratio)
-        
-        # 确保图片比例在合理范围内
-        image_ratio = max(min(image_ratio, 0.7), min_image_ratio)
-        
-        # 计算具体宽度
-        image_region_w = int(region_w * image_ratio)
-        text_region_w = region_w - image_region_w
-        
-        # 设置矩形区域
-        text_rect = (x1, y1, x1 + text_region_w, y2)
-        image_rect = (x1 + text_region_w, y1, x2, y2)
-        
-    elif content_image is not None:
-        # 只有图片：使用整个区域
-        text_rect = None
-        image_rect = (x1, y1, x2, y2)
-    elif text is not None:
-        # 只有文字：使用整个区域
-        text_rect = (x1, y1, x2, y2)
-        image_rect = None
-    else:
-        # 既没有文字也没有图片
-        buf = BytesIO()
-        img.convert("RGB").save(buf, format="BMP")
-        return buf.getvalue()[14:]
+    # 是否有图片和文字
+    has_text = text is not None and text.strip() != ""    
+    has_image = content_image is not None
+
+    if image_paste_mode == "mixed":
+        # mixed模式：根据内容类型决定
+        if not (has_text and has_image):
+            final_image_rect = text_rect
+            
+    else:  # off 模式
+        final_image_rect = text_rect
+
+        if has_image and has_text:
+            # 混合内容：在文本框内动态划分
+            x1, y1, x2, y2 = text_rect
+            
+            if not (x2 > x1 and y2 > y1):
+                raise ValueError("无效的区域。")
+
+            region_w= x2 - x1
+            
+            # 提取emoji并替换为占位符
+            placeholder_text, emoji_list = extract_emojis_and_replace(text, PLACEHOLDER_CHAR)
+            text_length = len(placeholder_text)
+            
+            # 获取图片尺寸和特征
+            cw, ch = content_image.size
+            image_aspect = cw / ch if ch > 0 else 1
+            
+            # 根据图片宽高比决定基础比例
+            if image_aspect > 2:
+                # 宽幅图片：需要更多宽度
+                base_image_ratio = 0.6
+            elif image_aspect > 1:
+                # 横版图片
+                base_image_ratio = 0.5
+            else:
+                # 竖版或方形图片
+                base_image_ratio = 0.4
+            
+            # 根据文本长度调整
+            if text_length <= 10:
+                # 短文本：加大图片比例
+                image_ratio = min(base_image_ratio + 0.2, 0.7)
+            elif text_length <= 30:
+                # 中等文本：保持基础比例
+                image_ratio = base_image_ratio
+            else:
+                # 长文本：减小图片比例
+                image_ratio = max(base_image_ratio - 0.1, min_image_ratio)
+            
+            # 确保图片比例在合理范围内
+            image_ratio = max(min(image_ratio, 0.7), min_image_ratio)
+            
+            # 计算具体宽度
+            image_region_w = int(region_w * image_ratio)
+            text_region_w = region_w - image_region_w
+            
+            # 设置矩形区域
+            final_text_rect = (x1, y1, x1 + text_region_w, y2)
+            final_image_rect = (x1 + text_region_w, y1, x2, y2)
 
     print(f"分区耗时: {int((time.time() - st)*1000)}")
     st=time.time()
 
     # --- 处理图片部分 ---
-    if content_image is not None and image_rect is not None:
-        ix1, iy1, ix2, iy2 = image_rect
+    if has_image:
+        ix1, iy1, ix2, iy2 = final_image_rect
         region_w_img = max(1, (ix2 - ix1) - 2 * image_padding)
         region_h_img = max(1, (iy2 - iy1) - 2 * image_padding)
 
@@ -362,9 +352,19 @@ def draw_content_auto(
         if cw <= 0 or ch <= 0:
             raise ValueError("content_image 尺寸无效。")
 
+        # 根据填充模式计算缩放比例
         scale_w = region_w_img / cw
         scale_h = region_h_img / ch
-        scale = min(scale_w, scale_h)
+        
+        if fill_mode == "width":
+            # 宽度匹配：根据宽度缩放，高度可能超出
+            scale = scale_w
+        elif fill_mode == "height":
+            # 高度匹配：根据高度缩放，宽度可能超出
+            scale = scale_h
+        else:
+            # 适应图片框：保持宽高比，不超出区域
+            scale = min(scale_w, scale_h)
 
         new_w = max(1, int(round(cw * scale)))
         new_h = max(1, int(round(ch * scale)))
@@ -393,8 +393,8 @@ def draw_content_auto(
         st=time.time()
         
     # --- 处理文字部分 ---
-    if text is not None and text_rect is not None:
-        tx1, ty1, tx2, ty2 = text_rect
+    if has_text:
+        tx1, ty1, tx2, ty2 = final_text_rect
         region_w_text, region_h_text = tx2 - tx1, ty2 - ty1
 
         # 提取emoji并替换为占位符
@@ -539,7 +539,7 @@ def draw_content_auto(
         st=time.time()
         
     # --- 压缩图片 ---
-    if CONFIGS.gui_settings.get("image_compression", None) is not None:
+    if CONFIGS.gui_settings.get("image_compression", None) is not None and CONFIGS.gui_settings.get("pixel_reduction_enabled", False):
         reduction_ratio = CONFIGS.gui_settings["image_compression"].get("pixel_reduction_ratio", 50) / 100.0
         new_width = max(int(img.width * (1 - reduction_ratio)), 300)
         new_height = max(int(img.height * (1 - reduction_ratio)), 100)

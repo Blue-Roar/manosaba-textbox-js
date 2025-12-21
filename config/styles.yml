@@ -55,6 +55,15 @@
     overlay: 齿轮-右上.webp
     scale: 1.0
     type: extra
+  paste_image_settings:
+    align: center
+    enabled: mixed
+    fill_mode: width
+    height: 800
+    valign: middle
+    width: 800
+    x: 1500
+    y: 200
   shadow_color: '#000000'
   shadow_offset_x: 3
   shadow_offset_y: 3
@@ -96,9 +105,18 @@ default:
     overlay: 名字框.webp
     scale: 1.2
     type: namebox
+  paste_image_settings:
+    align: center
+    enabled: 'off'
+    fill_mode: width
+    height: 800
+    valign: middle
+    width: 800
+    x: 1500
+    y: 200
   shadow_color: '#000000'
-  shadow_offset_x: 4
-  shadow_offset_y: 4
+  shadow_offset_x: 3
+  shadow_offset_y: 3
   text_align: left
   text_color: '#FFFFFF'
   text_valign: top

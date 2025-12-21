@@ -779,6 +779,7 @@ class ManosabaCore:
             time.sleep(0.005)
             
         print("读取到图片" if image is not None else "", "读取到文本" if text.strip() else "")
+        
         # 情感匹配处理
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
 
@@ -805,24 +806,36 @@ class ManosabaCore:
             return "错误: 没有文本或图像"
 
         try:
-            # 从样式配置获取文本框区域
-            textbox_x = CONFIGS.style.textbox_x
-            textbox_y = CONFIGS.style.textbox_y
-            textbox_width = CONFIGS.style.textbox_width
-            textbox_height = CONFIGS.style.textbox_height
+            # 获取粘贴图像设置
+            paste_settings = CONFIGS.style.paste_image_settings
+            enabled = paste_settings.get("enabled", "off")
             
-            # 计算绘制区域（不再加上文本偏移）
-            top_left = (textbox_x, textbox_y)
-            bottom_right = (textbox_x + textbox_width, textbox_y + textbox_height)
-
-            # 生成图片
+            # 初始化区域变量
+            text_region = (
+                    CONFIGS.style.textbox_x,
+                    CONFIGS.style.textbox_y,
+                    CONFIGS.style.textbox_x + CONFIGS.style.textbox_width,
+                    CONFIGS.style.textbox_y + CONFIGS.style.textbox_height
+            )
+            image_region = (
+                paste_settings.get("x", 0),
+                paste_settings.get("y", 0),
+                paste_settings.get("x", 0) + paste_settings.get("width", 300),
+                paste_settings.get("y", 0) + paste_settings.get("height", 200)
+            )
+            
             print(f"[{int((time.time()-start_time)*1000)}] 开始合成图片")
+            
             bmp_bytes = draw_content_auto(
-                image_source=self._current_base_image,
-                top_left=top_left,
-                bottom_right=bottom_right,
-                text=text,
-                content_image=image,
+                image_source = self._current_base_image,
+                text = text,
+                content_image = image,
+                text_rect=text_region,
+                image_rect=image_region,
+                fill_mode = paste_settings.get("fill_mode", "fit"),
+                image_align = paste_settings.get("align", "center"),
+                image_valign = paste_settings.get("valign", "middle"),
+                image_paste_mode=enabled
             )
 
             print(f"[{int((time.time()-start_time)*1000)}] 图片合成完成")
