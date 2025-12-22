@@ -57,8 +57,7 @@ def draw_content_auto(
     EMOJI_FALLBACK_CHAR = "□"  # emoji 加载失败时使用的替代字符
 
     # 使用样式配置中的默认值
-    text_align = CONFIGS.style.text_align
-    text_valign = CONFIGS.style.text_valign
+
     max_font_height = CONFIGS.style.font_size
     
     # 从十六进制颜色转换为RGB
@@ -431,6 +430,7 @@ def draw_content_auto(
         # 计算emoji尺寸
         emoji_size = best_size
 
+        text_valign = CONFIGS.style.text_valign
         # 计算垂直起始位置
         if text_valign == "top":
             y_start = ty1
@@ -490,6 +490,7 @@ def draw_content_auto(
 
             return segs, bracket_stack
 
+        text_align = CONFIGS.style.text_align
         for ln in best_lines:
             line_w = draw.textlength(ln, font=font)
 
@@ -539,7 +540,8 @@ def draw_content_auto(
         st=time.time()
         
     # --- 压缩图片 ---
-    if CONFIGS.gui_settings.get("image_compression", None) is not None and CONFIGS.gui_settings.get("pixel_reduction_enabled", False):
+    compression_setting = CONFIGS.gui_settings.get("image_compression", None)
+    if compression_setting and compression_setting.get("pixel_reduction_enabled", False):
         reduction_ratio = CONFIGS.gui_settings["image_compression"].get("pixel_reduction_ratio", 50) / 100.0
         new_width = max(int(img.width * (1 - reduction_ratio)), 300)
         new_height = max(int(img.height * (1 - reduction_ratio)), 100)

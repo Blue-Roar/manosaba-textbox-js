@@ -10,87 +10,26 @@ class StyleConfig:
     """样式配置类"""
     
     def __init__(self):
-        # 图片比例设置
-        self.aspect_ratio = "3:1"  # 可选: "3:1", "5:4", "16:9"
-        
-        # 字体设置（从常规设置移动过来）
-        self.font_family = "font3"
-        self.font_size = 90
-        self.text_color = '#FFFFFF'
-        self.bracket_color = '#EF4F54'
-        self.use_character_color = False  # 是否使用角色颜色作为强调色
-        
-        # 阴影设置
-        self.shadow_color = '#000000'  # 阴影颜色
-        self.shadow_offset_x = 4  # 阴影X偏移
-        self.shadow_offset_y = 4  # 阴影Y偏移
-        
-        # 文本框区域设置
-        self.textbox_x = 760  # 文本框左上角X坐标
-        self.textbox_y = 355  # 文本框左上角Y坐标
-        self.textbox_width = 1579  # 文本框宽度 (2339-760)
-        self.textbox_height = 445  # 文本框高度 (800-355)
-        
-        # 文本框文字偏移和对齐
-        self.text_align = "left"  # left, center, right
-        self.text_valign = "top"  # top, middle, bottom
-        
-        # 图片组件配置 - 统一格式，支持图层顺序
-        # 每个组件包含以下字段：
-        # - type: 组件类型 (character, textbox, namebox, extra)
-        # - enabled: 是否启用
-        # - overlay: 图片文件名（对于角色为空）
-        # - align: 对齐位置 (top-left, top-right, bottom-left, bottom-right, custom)
-        # - offset_x: X偏移
-        # - offset_y: Y偏移
-        # - scale: 缩放比例
-        # - layer: 图层顺序（数字，越小越底层）
-        
-        # 定义默认的图片组件
-        self.image_components = [
-            {
-                "type": "character",
-                "enabled": True,
-                "overlay": "",
-                "align": "bottom-left",  # 角色固定左下角对齐
-                "offset_x": 0,
-                "offset_y": 0,
-                "scale": 1.6,
-                "layer": 2  # 默认在中间层
-            },
-            {
-                "type": "textbox",
-                "enabled": True,
-                "overlay": "文本框1.webp",
-                "align": "bottom-center",  # 文本框固定底部居中
-                "offset_x": 0,
-                "offset_y": 0,
-                "scale": 1.0,
-                "layer": 1  # 默认在角色下层
-            },
-            {
-                "type": "namebox",
-                "enabled": True,
-                "overlay": "名字框.webp",
-                "align": "bottom-left",  # 名称框固定左下角对齐
-                "offset_x": 450,
-                "offset_y": -400,
-                "scale": 1.2,
-                "layer": 3  # 默认在最下层
-            }
-        ]
+        self.default_config = self._load_default_style_config() # 默认配置文件的内容格式和styles.yml基本一致
+        if self.default_config:
+            default = self.default_config.get("default", {})
+            # 设置属性
+            for key, value in default.items():
+                setattr(self, key, value)
 
-        # 粘贴图像设置
-        self.paste_image_settings = {
-            "enabled": "off",  # off, mixed
-            "x": 0,
-            "y": 0,
-            "width": 300,
-            "height": 200,
-            "fill_mode": "fit",  # fit, width, height
-            "align": "center",  # left, center, right
-            "valign": "middle"  # top, middle, bottom
-        }
+    def _load_default_style_config(self):
+        """从 defaultstyle.yml 加载默认样式配置"""
+        try:
+            filepath = get_resource_path(os.path.join("config", "defaultstyle.yml"))
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    return yaml.safe_load(f) or {}
+            else:
+                print(f"警告：默认样式文件不存在: {filepath}")
+                return None
+        except Exception as e:
+            print(f"加载默认样式配置失败: {e}")
+            return None
     
     def get_bracket_color(self, character_name=None):
         """获取强调色，根据是否使用角色颜色返回不同的颜色"""
@@ -168,7 +107,7 @@ class ConfigLoader:
             for key, value in style_data.items():
                 if hasattr(self.style, key):
                     setattr(self.style, key, value)
-
+            
             # 如果使用角色颜色作为强调色，更新强调色
             if self.style.use_character_color:
                 self._update_bracket_color_from_character()
@@ -200,21 +139,7 @@ class ConfigLoader:
         
         if not styles_data:
             # 如果没有样式配置，创建默认配置
-            styles_data = {
-                "default": {
-                    "aspect_ratio": "3:1",
-                    "font_family": "font3",
-                    "font_size": 90,
-                    "text_color": "#FFFFFF",
-                    "bracket_color": "#EF4F54",
-                    "use_character_color": False,
-                    "text_offset_x": 0,
-                    "text_offset_y": 0,
-                    "text_align": "left",
-                    "text_valign": "top",
-                    "image_components": self.style.image_components
-                }
-            }
+            styles_data = {"default": self.style.default_config.get("default", {})}
             self._save_yaml_file("styles.yml", styles_data)
         
         self.style_configs = styles_data
@@ -358,9 +283,13 @@ class ConfigLoader:
 
         if config_type == "settings":
             return {
+                "pre_resize": 1080,
                 "preloading": {
                 "preload_character": True,
                 "preload_background": True,
+                },
+                "cut_settings": {
+                    "cut_mode": "全选剪切"
                 },
                 "image_compression": {
                     "pixel_reduction_enabled": True,

@@ -66,10 +66,10 @@ class SettingsWindow:
         ttk.Button(button_frame, text="保存", command=self._on_save).pack(
             side=tk.RIGHT, padx=5
         )
-        ttk.Button(button_frame, text="取消", command=self.window.destroy).pack(
+        ttk.Button(button_frame, text="应用", command=self._on_apply).pack(
             side=tk.RIGHT, padx=5
         )
-        ttk.Button(button_frame, text="应用", command=self._on_apply).pack(
+        ttk.Button(button_frame, text="取消", command=self.window.destroy).pack(
             side=tk.RIGHT, padx=5
         )
     
@@ -141,16 +141,83 @@ class SettingsWindow:
         )
         preload_background_cb.grid(row=0, column=1, sticky=tk.W, pady=5)
         
-        # 预加载说明
+        # 预压缩分辨率设置（移动到预加载设置框内）
+        ttk.Label(preloading_frame, text="预压缩分辨率:").grid(
+            row=1, column=0, sticky=tk.W, pady=5
+        )
+        
+        # 预压缩选项
+        precompress_options = {
+            "720p (1280x720)": 1280,
+            "1080p (1920x1080)": 1920,
+            "2K (2560x1440)": 2560,
+            "4K (3840x2160)": 3840
+        }
+        
+        # 获取当前值，如果没有则使用1080p
+        current_pre_resize = CONFIGS.gui_settings.get("pre_resize", 1920)
+        
+        # 根据值查找对应的显示文本
+        current_option = "1080p (1920x1080)"  # 默认
+        for display, value in precompress_options.items():
+            if value == current_pre_resize:
+                current_option = display
+                break
+        
+        self.pre_resize_var = tk.StringVar(value=current_option)
+        self.pre_resize_value_map = precompress_options  # 保存映射关系
+        
+        pre_resize_combo = ttk.Combobox(
+            preloading_frame,
+            textvariable=self.pre_resize_var,
+            values=list(precompress_options.keys()),
+            state="readonly",
+            width=20
+        )
+        pre_resize_combo.grid(row=1, column=1, sticky=tk.W, pady=5, padx=5)
+        pre_resize_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'settings_changed', True))
+        
+        # 预加载和预压缩说明
         ttk.Label(preloading_frame, 
-                text="注：预加载可以提高图片生成速度，但会增加内存使用", 
-                font=("", 8), foreground="gray").grid(
+                text="注：预加载可以提高图片生成速度，但会增加内存使用\n预压缩可以减少内存占用，但会降低背景图质量", 
+                font=("", 8), foreground="gray", justify=tk.LEFT).grid(
             row=2, column=0, columnspan=2, sticky=tk.W, pady=2
         )
         
         # 配置列权重
         preloading_frame.columnconfigure(0, weight=1)
-        preloading_frame.columnconfigure(1, weight=1)
+        preloading_frame.columnconfigure(1, weight=1)    
+
+        # 剪切设置
+        cut_frame = ttk.LabelFrame(content_frame, text="剪切设置", padding="10")
+        cut_frame.pack(fill=tk.X, pady=5, padx=5)
+        
+        ttk.Label(cut_frame, text="剪切模式:").grid(
+            row=0, column=0, sticky=tk.W, pady=5
+        )
+        
+        # 剪切模式选项
+        self.cut_mode_var = tk.StringVar(
+            value=CONFIGS.gui_settings.get("cut_settings", {}).get("cut_mode", "full")
+        )
+        cut_mode_combo = ttk.Combobox(
+            cut_frame,
+            textvariable=self.cut_mode_var,
+            values=["全选剪切", "单行剪切", "直接剪切"],
+            state="readonly",
+            width=15
+        )
+        cut_mode_combo.grid(row=0, column=1, sticky=tk.W, pady=5, padx=5)
+        cut_mode_combo.bind("<<ComboboxSelected>>", lambda e: setattr(self, 'settings_changed', True))
+        
+        # 单行剪切说明
+        cut_mode_desc = ttk.Label(cut_frame, 
+                text="全选剪切：Ctrl+A+X（默认）\n单行剪切：剪切当前行\n直接剪切：剪切当前选中的内容", 
+                font=("", 8), foreground="gray", justify=tk.LEFT)
+        cut_mode_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=2)
+        
+        # 配置列权重
+        cut_frame.columnconfigure(1, weight=1)
         
         # 获取情感匹配设置
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
@@ -779,9 +846,14 @@ class SettingsWindow:
     def _collect_settings(self):
         """收集所有设置到字典"""
         settings = {
+            "pre_resize": self.pre_resize_value_map.get(self.pre_resize_var.get(), 1920),
             "preloading": {
                 "preload_character": self.preload_character_var.get(),
                 "preload_background": self.preload_background_var.get()
+            },
+            # 新增剪切设置
+            "cut_settings": {
+                "cut_mode": self.cut_mode_var.get()
             },
             "image_compression": {
                 "pixel_reduction_enabled": self.pixel_reduction_var.get(),
@@ -850,13 +922,16 @@ class SettingsWindow:
         """保存设置并关闭窗口"""
         self._on_apply()
         self.window.destroy()
-
     def _on_apply(self):
         """应用设置但不关闭窗口"""
         # 检查并保存常规设置
         if self.settings_changed:
             self.settings_changed = False
             new_settings = self._collect_settings()
+            
+            # 检查预压缩设置是否发生变化
+            old_pre_resize = CONFIGS.gui_settings.get("pre_resize", 1920)
+            new_pre_resize = new_settings.get("pre_resize", 1920)
             
             # 获取最新的预加载设置
             old_PS = CONFIGS.gui_settings.get("preloading", {}).copy()
@@ -875,6 +950,14 @@ class SettingsWindow:
             # 保存到文件
             if CONFIGS.save_gui_settings():
                 print("配置更新")
+                
+                # 如果预压缩设置发生变化，清理背景缓存
+                if old_pre_resize != new_pre_resize:
+                    print(f"预压缩设置已更改: {old_pre_resize} -> {new_pre_resize}")
+                    from load_utils import get_unified_cache_manager
+                    get_unified_cache_manager().clear_cache("background")
+                    self.gui.core.preload_manager.submit_preload_task('background')
+                
                 # 如果角色预加载从关闭变为开启
                 if (old_preload_char != new_preload_char and new_preload_char):
                     # 触发预加载当前角色

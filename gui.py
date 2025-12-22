@@ -53,54 +53,31 @@ class ManosabaGUI:
             self.sentiment_filter_combo.config(state="disabled")
         else:
             self.sentiment_filter_combo.config(state="readonly")
-            
-        # 开始预加载状态检查
-        self.check_preload_status()
+        
+        # 启动预加载回调处理器
+        self._start_preload_callback_processor()
 
-    def check_preload_status(self):
-        """检查预加载状态并更新界面"""
-        # 获取预加载设置
-        preloading_settings = CONFIGS.gui_settings.get("preloading", {})
-        preload_character = preloading_settings.get("preload_character", True)
+        self.update_preview()
+        self.update_sentiment_filter_combo()
+    
+    def _start_preload_callback_processor(self):
+        """启动预加载回调处理器"""
+        # 启动预加载管理器的回调处理器
+        self.core.preload_manager._start_main_thread_callback_processor()
         
-        if not preload_character:
-            # 如果预加载已禁用，直接显示就绪状态
-            self.update_status("就绪 - 角色预加载已禁用")
-            return
+        # 定期处理预加载回调（每100ms检查一次）
+        def process_callbacks():
+            try:
+                self.core.preload_manager.process_main_thread_callbacks()
+            except Exception as e:
+                print(f"处理预加载回调失败: {str(e)}")
+            
+            # 继续调度下一次处理
+            self.root.after(100, process_callbacks)
         
-        # 从core的预加载管理器获取状态
-        preload_manager = self.core.preload_manager
-        preload_status = preload_manager.get_preload_status()
+        # 延迟启动，确保GUI完全初始化
+        self.root.after(200, process_callbacks)
         
-        if not preload_status['is_complete'] and preload_status['current_character']:
-            progress = preload_manager.get_preload_progress()
-            
-            loaded = preload_status['loaded_items']
-            total = preload_status['total_items']
-            character = preload_status['current_character']
-            
-            # 只有当有进度变化时才更新状态，避免频繁更新
-            if hasattr(self, '_last_preload_progress'):
-                if progress != self._last_preload_progress:
-                    self.update_status(f"预加载角色 {character}: {loaded}/{total} ({progress:.0%})")
-                    self._last_preload_progress = progress
-            else:
-                self.update_status(f"预加载角色 {character}: {loaded}/{total} ({progress:.0%})")
-                self._last_preload_progress = progress
-            
-            # 继续检查
-            self.root.after(500, self.check_preload_status)
-        else:
-            if hasattr(self, '_last_preload_progress'):
-                del self._last_preload_progress
-            
-            # 检查是否有预加载任务刚刚完成
-            if preload_status['current_character'] and preload_status['is_complete']:
-                character = preload_status['current_character']
-                self.update_status(f"角色 {character} 预加载完成 - 就绪")
-            else:
-                self.update_status("就绪 - 等待生成预览")
-
     def setup_gui(self):
         """设置 GUI 界面"""
         # 创建菜单栏

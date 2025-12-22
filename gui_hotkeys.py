@@ -2,7 +2,6 @@
 
 from pynput import keyboard
 from pynput.keyboard import Key, Controller
-from load_utils import clear_cache
 from config import CONFIGS
 
 
@@ -176,7 +175,6 @@ class HotkeyManager:
 
     def _handle_character_switch_success(self):
         """处理角色切换成功后的通用操作"""
-        clear_cache("character")
         self.gui.character_var.set(
             f"{CONFIGS.get_character(full_name=True)} ({CONFIGS.get_character()})"
         )

@@ -9,6 +9,8 @@
     fill_mode: height
     layer: 3
     name: 背景
+    overlay: c14
+    scale: 1.5
     type: background
     use_fixed_background: false
   - align: bottom-left
@@ -89,7 +91,6 @@ default:
     fill_mode: width
     layer: 0
     name: 背景
-    overlay: c22
     type: background
     use_fixed_background: false
   - align: bottom-center
