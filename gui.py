@@ -18,7 +18,7 @@ class ManosabaGUI:
     def __init__(self):
         self.core = ManosabaCore()
         # 设置GUI回调
-        self.core.set_gui_callback(self.on_sentiment_analyzer_status_changed)
+        self.core.set_gui_callback(self._on_sentiment_analyzer_status_changed)
         # 设置状态更新回调
         self.core.set_status_callback(self.update_status)
 
@@ -40,13 +40,13 @@ class ManosabaGUI:
         # 图片生成状态
         self.is_generating = False
 
-        self.setup_gui()
-        self.root.bind("<Configure>", self.on_window_resize)
+        self._setup_gui()
+        self.root.bind("<Configure>", self._on_window_resize)
 
         self.hotkey_manager.setup_hotkeys()
 
         # 根据初始状态设置按钮可用性
-        self.update_sentiment_button_state()
+        self._update_sentiment_button_state()
 
         # 根据随机表情状态设置情感筛选下拉框状态
         if self.emotion_random_var.get():
@@ -54,34 +54,13 @@ class ManosabaGUI:
         else:
             self.sentiment_filter_combo.config(state="readonly")
         
-        # 启动预加载回调处理器
-        # self._start_preload_callback_processor()
-
         self.update_preview()
-        self.update_sentiment_filter_combo()
+        self._update_sentiment_filter_combo()
     
-    def _start_preload_callback_processor(self):
-        """启动预加载回调处理器"""
-        # 启动预加载管理器的回调处理器
-        self.core.preload_manager._start_main_thread_callback_processor()
-        
-        # 定期处理预加载回调（每100ms检查一次）
-        def process_callbacks():
-            try:
-                self.core.preload_manager.process_main_thread_callbacks()
-            except Exception as e:
-                print(f"处理预加载回调失败: {str(e)}")
-            
-            # 继续调度下一次处理
-            self.root.after(100, process_callbacks)
-        
-        # 延迟启动，确保GUI完全初始化
-        self.root.after(200, process_callbacks)
-
-    def setup_gui(self):
+    def _setup_gui(self):
         """设置 GUI 界面"""
         # 创建菜单栏
-        self.setup_menu()
+        self._setup_menu()
 
         # 主框架
         main_frame = ttk.Frame(self.root, padding="10")
@@ -128,7 +107,7 @@ class ManosabaGUI:
             emotion_frame, textvariable=self.sentiment_filter_var, state="readonly", width=15
         )
         self.sentiment_filter_combo.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=5)
-        self.sentiment_filter_combo.bind("<<ComboboxSelected>>", self.on_sentiment_filter_changed)
+        self.sentiment_filter_combo.bind("<<ComboboxSelected>>", self._on_sentiment_filter_changed)
         
         # 表情下拉框
         ttk.Label(emotion_frame, text="指定表情:").grid(
@@ -144,7 +123,7 @@ class ManosabaGUI:
         ]
         self.emotion_combo.set("表情 1")
         self.emotion_combo.grid(row=0, column=4, sticky=(tk.W, tk.E), padx=5)
-        self.emotion_combo.bind("<<ComboboxSelected>>", self.on_emotion_changed)
+        self.emotion_combo.bind("<<ComboboxSelected>>", self._on_emotion_changed)
         self.emotion_combo.config(state="disabled")
 
         # 配置列权重
@@ -184,7 +163,7 @@ class ManosabaGUI:
         ]
         self.background_combo.set("背景 1")
         self.background_combo.grid(row=0, column=2, sticky=(tk.W, tk.E), padx=5)
-        self.background_combo.bind("<<ComboboxSelected>>", self.on_background_changed)
+        self.background_combo.bind("<<ComboboxSelected>>", self._on_background_changed)
         self.background_combo.config(state="disabled")
 
         background_frame.columnconfigure(2, weight=1)
@@ -198,7 +177,7 @@ class ManosabaGUI:
             settings_frame,
             text="自动粘贴",
             variable=self.auto_paste_var,
-            command=self.on_auto_paste_changed,
+            command=self._on_auto_paste_changed,
         ).grid(row=0, column=0, sticky=tk.W, padx=5)
 
         self.auto_send_var = tk.BooleanVar(value=CONFIGS.config.AUTO_SEND_IMAGE)
@@ -206,7 +185,7 @@ class ManosabaGUI:
             settings_frame,
             text="自动发送",
             variable=self.auto_send_var,
-            command=self.on_auto_send_changed,
+            command=self._on_auto_send_changed,
         ).grid(row=0, column=1, sticky=tk.W, padx=5)
 
         # 只在 display 为 True 时显示情感匹配按钮
@@ -222,7 +201,7 @@ class ManosabaGUI:
             self.sentiment_checkbutton.grid(row=0, column=2, sticky=tk.W, padx=5)
             
         # 根据初始状态设置按钮可用性
-        self.update_sentiment_button_state()
+        self._update_sentiment_button_state()
 
         # 预览框架
         preview_frame = ttk.LabelFrame(main_frame, text="图片预览", padding="5")
@@ -247,29 +226,29 @@ class ManosabaGUI:
         main_frame.rowconfigure(4, weight=1)
 
         # self.update_preview()
-        self.update_sentiment_filter_combo()
+        self._update_sentiment_filter_combo()
 
-    def setup_menu(self):
+    def _setup_menu(self):
         """设置菜单栏"""
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
 
-        menubar.add_command(label="设置", command=self.open_settings)
-        menubar.add_command(label="样式", command=self.open_style)
-        menubar.add_command(label="关于", command=self.open_about)
+        menubar.add_command(label="设置", command=self._open_settings)
+        menubar.add_command(label="样式", command=self._open_style)
+        menubar.add_command(label="关于", command=self._open_about)
 
-    def open_style(self):
+    def _open_style(self):
         """打开样式编辑窗口"""
         # 打开样式窗口
         self.style_window = StyleWindow(self.root, self.core, self)
 
-    def open_about(self):
+    def _open_about(self):
         """打开关于窗口"""
         if not self.about_window:
             self.about_window = AboutWindow(self.root)
         self.about_window.open()
 
-    def open_settings(self):
+    def _open_settings(self):
         """打开设置窗口"""
         # 停止热键监听
         self.hotkey_manager.stop_hotkey_listener()
@@ -283,7 +262,7 @@ class ManosabaGUI:
         # 设置窗口关闭后重新启动热键监听
         self.hotkey_manager.setup_hotkeys()
 
-    def on_window_resize(self, event):
+    def _on_window_resize(self, event):
         """处理窗口大小变化事件 - 调整大小并刷新内容"""
         if event.widget == self.root:
             self.preview_manager.handle_window_resize(event)
@@ -292,7 +271,7 @@ class ManosabaGUI:
         """更新预览"""
         self.preview_manager.update_preview()
 
-    def update_sentiment_filter_combo(self):
+    def _update_sentiment_filter_combo(self):
         """更新情感筛选下拉框的选项"""
         character_name = CONFIGS.get_character()
         character_meta = CONFIGS.mahoshojo.get(character_name, {})
@@ -318,7 +297,7 @@ class ManosabaGUI:
         # 设置默认值
         self.sentiment_filter_combo.set("全部表情")
 
-    def on_sentiment_filter_changed(self, event=None):
+    def _on_sentiment_filter_changed(self, event=None):
         """情感筛选改变事件"""
         # 如果随机表情启用，则不执行筛选
         if self.emotion_random_var.get():
@@ -372,40 +351,52 @@ class ManosabaGUI:
         self.core.switch_character(char_idx)
 
         # 更新情感筛选下拉框
-        self.update_sentiment_filter_combo()
+        self._update_sentiment_filter_combo()
+        
+        # 先获取当前角色的表情数量
+        emotion_count = CONFIGS.current_character["emotion_count"]
         
         # 更新表情选项（先使用全部表情）
         self.sentiment_filter_combo.set("全部表情")
         
         # 根据随机表情状态决定是否执行筛选
-        if not self.emotion_random_var.get():
-            self.on_sentiment_filter_changed()  # 这会自动更新表情下拉框
-
-        # 重置表情选择为第一个表情
-        if self.emotion_combo["values"]:
-            self.emotion_combo.set(self.emotion_combo["values"][0])
-            if self.emotion_random_var.get():
-                CONFIGS.selected_emotion = None
+        if self.emotion_random_var.get():
+            # 随机表情启用时，更新表情下拉框的选项为所有表情
+            self.emotion_combo["values"] = [
+                f"表情 {i}" for i in range(1, emotion_count + 1)
+            ]
+            # 设置默认值为第一个表情
+            if emotion_count > 0:
+                self.emotion_combo.set("表情 1")
             else:
-                try:
-                    CONFIGS.selected_emotion = int(self.emotion_combo.get().split()[-1])
-                except (ValueError, IndexError):
-                    CONFIGS.selected_emotion = None
-        else:
-            self.emotion_combo.set("")
+                self.emotion_combo.set("")
+                
+            # 禁用下拉框（因为随机表情启用）
+            self.emotion_combo.config(state="disabled")
+            self.sentiment_filter_combo.config(state="disabled")
             CONFIGS.selected_emotion = None
+        else:
+            # 随机表情未启用时，启用下拉框并更新选项
+            self.emotion_combo.config(state="readonly")
+            self.sentiment_filter_combo.config(state="readonly")
+            
+            # 这会自动更新表情下拉框
+            self._on_sentiment_filter_changed()
+
+        # 重置背景选择为随机
+        if self.background_random_var.get():
+            self.background_combo.config(state="disabled")
+            CONFIGS.selected_background = None
+        else:
+            self.background_combo.config(state="readonly")
+            if self.background_combo["values"]:
+                self.background_combo.set(self.background_combo["values"][0])
+                background_index = int(self.background_combo.get().split()[-1])
+                CONFIGS.selected_background = background_index
 
         # 标记需要更新预览内容
         self.update_preview()
-        self.update_status(f"已切换到角色: {CONFIGS.get_character(full_name=True)}")
-
-    def update_emotion_options(self):
-        """更新表情选项"""
-        emotion_count = CONFIGS.current_character["emotion_count"]
-        self.emotion_combo["values"] = [
-            f"表情 {i}" for i in range(1, emotion_count + 1)
-        ]
-        self.emotion_combo.set("表情 1")
+        # self.update_status(f"已切换到角色: {CONFIGS.get_character(full_name=True)}")
 
     def on_emotion_random_changed(self):
         """表情随机选择改变"""
@@ -432,7 +423,7 @@ class ManosabaGUI:
 
         self.update_preview()
 
-    def on_emotion_changed(self, event=None):
+    def _on_emotion_changed(self, event=None):
         """表情改变事件"""
         # 取消情感匹配勾选
         if CONFIGS.gui_settings["sentiment_matching"].get("display", False) and self.sentiment_matching_var.get():
@@ -465,7 +456,7 @@ class ManosabaGUI:
 
         self.update_preview()
 
-    def on_background_changed(self, event=None):
+    def _on_background_changed(self, event=None):
         """背景改变事件"""
         if not self.background_random_var.get():
             background_value = self.background_var.get()
@@ -474,15 +465,15 @@ class ManosabaGUI:
                 CONFIGS.selected_background = background_index
                 self.update_preview()
 
-    def on_auto_paste_changed(self):
+    def _on_auto_paste_changed(self):
         """自动粘贴设置改变"""
         CONFIGS.config.AUTO_PASTE_IMAGE = self.auto_paste_var.get()
 
-    def on_auto_send_changed(self):
+    def _on_auto_send_changed(self):
         """自动发送设置改变"""
         CONFIGS.config.AUTO_SEND_IMAGE = self.auto_send_var.get()
 
-    def on_sentiment_analyzer_status_changed(self, initialized: bool, enabled: bool, initializing: bool = False):
+    def _on_sentiment_analyzer_status_changed(self, initialized: bool, enabled: bool, initializing: bool = False):
         """情感分析器状态变化回调"""
         def update_ui():
             if initializing:
@@ -506,7 +497,7 @@ class ManosabaGUI:
         # 在UI线程中执行更新
         self.root.after(0, update_ui)
 
-    def update_sentiment_button_state(self):
+    def _update_sentiment_button_state(self):
         """更新情感匹配按钮状态"""
         # 根据当前状态设置复选框状态
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
@@ -528,18 +519,6 @@ class ManosabaGUI:
             self.sentiment_checkbutton.config(state="normal")
             self.sentiment_matching_var.set(False)
 
-    def on_sentiment_matching_clicked(self):
-        """情感匹配按钮点击事件"""
-        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-        current_enabled = sentiment_settings.get("enabled", False)
-        
-        if not current_enabled:
-            # 如果当前未启用，尝试启用
-            if not self.core.sentiment_analyzer_status['initialized']:
-                # 如果未初始化，则开始初始化
-                self.update_status("正在初始化情感分析器...")
-        self.core.toggle_sentiment_matching()
-    
     def on_sentiment_matching_changed(self):
         """情感匹配设置改变"""
         # 调用core的切换方法
@@ -557,17 +536,17 @@ class ManosabaGUI:
         def generate_in_thread():
             try:
                 result = self.core.generate_image()
-                self.root.after(0, lambda: self.on_generation_complete(result))
+                self.root.after(0, lambda: self._on_generation_complete(result))
             except Exception as e:
                 error_msg = f"生成失败: {str(e)}"
                 print(error_msg)
-                self.root.after(0, lambda: self.on_generation_complete(error_msg))
+                self.root.after(0, lambda: self._on_generation_complete(error_msg))
             finally:
                 self.is_generating = False
         thread = threading.Thread(target=generate_in_thread, daemon=True, name="GenerateImg")
         thread.start()
 
-    def on_generation_complete(self, result):
+    def _on_generation_complete(self, result):
         """生成完成后的回调函数"""
         self.status_manager.update_status(result)
         self.update_preview()

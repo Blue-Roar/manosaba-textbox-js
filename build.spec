@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller 单文件打包配置 - 优化版本
-# 使用方法: pyinstaller build_onefile_optimized.spec
+# PyInstaller 单文件打包配置
+# 使用方法: pyinstaller build.spec
 
 import os
 import glob
@@ -35,8 +35,7 @@ core_files = [
     'gui_hotkeys.py',
     'gui_settings.py',
     'path_utils.py',
-    'image_loader.py',
-    'draw_utils.py'
+    'image_loader.py'
 ]
 
 for file in core_files:
@@ -67,14 +66,15 @@ excludes = [
     'IPython',
     'notebook',
     'rich',
-    'textual',  # 不使用的TUI库
     'pytest',
     'sphinx',
     'bz2',
     'lzma',
     'sqlite3',
     'tkinter.test',
-    'tkinter.ttk.test'
+    'tkinter.ttk.test',
+    'PIL.ImageFilter',
+    'PIL.ImageEnhance',
 ]
 
 a = Analysis(

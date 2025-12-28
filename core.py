@@ -2,8 +2,7 @@
 from config import CONFIGS
 from clipboard_utils import ClipboardManager
 from sentiment_analyzer import SentimentAnalyzer
-from draw_utils import draw_content_auto
-from image_loader import get_enhanced_loader, generate_image_with_dll, set_dll_global_config, clear_cache, update_style_config
+from image_loader import get_enhanced_loader, generate_image_with_dll, set_dll_global_config, clear_cache, update_style_config, update_dll_gui_settings, draw_content_auto
 
 import time
 import copy
@@ -68,14 +67,11 @@ class ManosabaCore:
         # 设置DLL全局配置
         set_dll_global_config(
             self._assets_path,
-            preload_character=CONFIGS.gui_settings.get("preloading", {}).get("preload_character", False),
-            preload_background=CONFIGS.gui_settings.get("preloading", {}).get("preload_background", False),
-            pre_resize=CONFIGS.gui_settings.get("pre_resize", 1080),
             min_image_ratio=0.2
         )
         
         # 更新DLL GUI设置
-        # update_dll_gui_settings(CONFIGS.gui_settings)
+        update_dll_gui_settings(CONFIGS.gui_settings)
     
     def set_gui_callback(self, callback):
         """设置GUI回调函数，用于通知状态变化"""
@@ -288,7 +284,7 @@ class ManosabaCore:
             if CONFIGS.style.use_character_color:
                 CONFIGS._update_bracket_color_from_character()
             
-            update_style_config(CONFIGS.style)
+            # update_style_config(CONFIGS.style)
             clear_cache()
             
             self.update_status(f"切换到角色: {character_name}")
@@ -363,6 +359,7 @@ class ManosabaCore:
 
     def generate_preview(self) -> tuple:
         """生成预览图片和相关信息"""
+        st = time.time()
         character_name = CONFIGS.get_character()
         emotion_count = CONFIGS.current_character["emotion_count"]
 
@@ -488,7 +485,7 @@ class ManosabaCore:
             )
             
             if preview_image:
-                print(f"DLL预览图生成成功")
+                print(f"预览生成用时: {int((time.time()-st)*1000)}ms")
             else:
                 print("预览图生成失败，使用默认图片")
                 preview_image = Image.new("RGBA", _calculate_canvas_size(), (0, 0, 0, 0))

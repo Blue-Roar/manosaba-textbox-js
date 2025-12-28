@@ -1,7 +1,6 @@
 """热键管理模块"""
 
 from pynput import keyboard
-from pynput.keyboard import Key, Controller
 from config import CONFIGS
 
 
@@ -15,27 +14,6 @@ class HotkeyManager:
         self._listener = None  # 全局热键监听器
         self._hotkey_handlers = {}  # 存储热键处理函数
         self._active = True  # 是否启用热键监听
-        self._keyboard = Controller()  # 用于模拟按键
-        
-        # 特殊键映射
-        self._special_keys = {
-            Key.ctrl: "<ctrl>",
-            Key.ctrl_l: "<ctrl>",
-            Key.ctrl_r: "<ctrl>",
-            Key.alt: "<alt>",
-            Key.alt_l: "<alt>", 
-            Key.alt_r: "<alt>",
-            Key.shift: "<shift>",
-            Key.shift_l: "<shift>",
-            Key.shift_r: "<shift>",
-            Key.cmd: "<cmd>",
-            Key.cmd_l: "<cmd>",
-            Key.cmd_r: "<cmd>",
-            Key.space: "<space>",
-            Key.enter: "<enter>",
-            Key.esc: "<esc>",
-            Key.tab: "<tab>",
-        }
 
     def setup_hotkeys(self):
         """设置热键监听"""
@@ -76,20 +54,20 @@ class HotkeyManager:
             if action == "start_generate":
                 self.gui.root.after(0, self.gui.generate_image)
             elif action == "next_character":
-                self.gui.root.after(0, lambda: self.switch_character(1))
+                self.gui.root.after(0, lambda: self._switch_character(1))
             elif action == "prev_character":
-                self.gui.root.after(0, lambda: self.switch_character(-1))
+                self.gui.root.after(0, lambda: self._switch_character(-1))
             elif action == "next_emotion":
-                self.gui.root.after(0, lambda: self.switch_emotion(1))
+                self.gui.root.after(0, lambda: self._switch_emotion(1))
             elif action == "prev_emotion":
-                self.gui.root.after(0, lambda: self.switch_emotion(-1))
+                self.gui.root.after(0, lambda: self._switch_emotion(-1))
             elif action == "next_background":
-                self.gui.root.after(0, lambda: self.switch_background(1))
+                self.gui.root.after(0, lambda: self._switch_background(1))
             elif action == "prev_background":
-                self.gui.root.after(0, lambda: self.switch_background(-1))
+                self.gui.root.after(0, lambda: self._switch_background(-1))
             elif action.startswith("character_") and action in quick_chars:
                 char_id = quick_chars.get(action)
-                self.gui.root.after(0, lambda c=char_id: self.switch_to_character_by_id(c))
+                self.gui.root.after(0, lambda c=char_id: self._switch_to_character_by_id(c))
             
             print(f"触发热键: {action}")
         
@@ -97,7 +75,7 @@ class HotkeyManager:
 
     def _handle_toggle_listener(self):
         """处理切换监听器状态的热键"""
-        self.gui.root.after(0, self.toggle_hotkey_listener)
+        self.gui.root.after(0, self._toggle_hotkey_listener)
 
     def _start_listener(self):
         """启动热键监听器"""
@@ -119,7 +97,7 @@ class HotkeyManager:
             print(f"启动热键监听器失败: {e}")
             self._listener = None
 
-    def toggle_hotkey_listener(self):
+    def _toggle_hotkey_listener(self):
         """切换热键监听状态"""
         self._active = not self._active
         status = "启用" if self._active else "禁用"
@@ -127,7 +105,7 @@ class HotkeyManager:
         print(f"热键监听状态已切换为: {status}")
 
     # 以下方法保持不变...
-    def switch_character(self, direction):
+    def _switch_character(self, direction):
         """切换角色"""
         current_index = CONFIGS.current_character_index
         total_chars = len(CONFIGS.character_list)
@@ -141,7 +119,7 @@ class HotkeyManager:
         if self.core.switch_character(new_index):
             self._handle_character_switch_success()
     
-    def switch_to_character_by_id(self, char_id):
+    def _switch_to_character_by_id(self, char_id):
         """通过角色ID切换到指定角色"""
         if char_id and char_id in CONFIGS.character_list:
             if char_id == CONFIGS.character_list[CONFIGS.current_character_index - 1]:
@@ -150,7 +128,7 @@ class HotkeyManager:
             if self.core.switch_character(char_index):
                 self._handle_character_switch_success()
     
-    def switch_emotion(self, direction):
+    def _switch_emotion(self, direction):
         """切换表情"""
         if CONFIGS.gui_settings["sentiment_matching"].get("display",False):
             self._cancel_sentiment_matching()
@@ -178,18 +156,7 @@ class HotkeyManager:
         self.gui.character_var.set(
             f"{CONFIGS.get_character(full_name=True)} ({CONFIGS.get_character()})"
         )
-        self.gui.update_emotion_options()
-        
-        self.gui.emotion_combo.set("表情 1")
-        if self.gui.emotion_random_var.get():
-            CONFIGS.selected_emotion = None
-        else:
-            CONFIGS.selected_emotion = 1
-        
-        self.gui.update_preview()
-        self.gui.update_status(
-            f"已切换到角色: {CONFIGS.get_character(full_name=True)}"
-        )
+        self.gui.on_character_changed()
     
     def _cancel_sentiment_matching(self):
         """取消情感匹配"""
@@ -198,7 +165,7 @@ class HotkeyManager:
             self.gui.on_sentiment_matching_changed()
             self.gui.update_status("已取消情感匹配（手动切换表情）")
 
-    def switch_background(self, direction):
+    def _switch_background(self, direction):
         """切换背景"""
         if self.gui.background_random_var.get():
             self.gui.background_random_var.set(False)

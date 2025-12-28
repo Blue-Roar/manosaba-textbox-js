@@ -138,7 +138,7 @@ default:
   aspect_ratio: '5:4'
   bracket_color: '#ef4f54'
   font_family: font3
-  font_size: 120
+  font_size: 150
   image_components:
   - align: bottom-center
     enabled: true
@@ -180,7 +180,7 @@ default:
   use_character_color: false
 思索:
   aspect_ratio: '5:4'
-  bracket_color: '#ef4f54'
+  bracket_color: '#9f91fb'
   font_family: font2
   font_size: 80
   image_components:
@@ -265,8 +265,8 @@ default:
     layer: 12
     max_width: 500
     name: 小文本框内容
-    offset_x: -120
-    offset_y: 380
+    offset_x: 70
+    offset_y: 400
     shadow_color: '#000000'
     shadow_offset_x: 0
     shadow_offset_y: 0

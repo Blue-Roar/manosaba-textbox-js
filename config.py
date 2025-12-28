@@ -94,6 +94,7 @@ class ConfigLoader:
         """应用指定的样式配置"""
         if style_name in self.style_configs:
             style_data = self.style_configs[style_name]
+
             self.current_style = style_name
             clear_cache()
             # 更新样式对象
@@ -113,6 +114,9 @@ class ConfigLoader:
     def update_style(self, style_name: str, style_data: Dict[str, Any]):
         """更新样式配置"""
         if style_name in self.style_configs:
+            if self.style_configs[style_name] == style_data:
+                return False
+
             # 确保有image_components字段
             if "image_components" not in style_data:
                 style_data["image_components"] = self.style_configs[style_name].get("image_components", [])
@@ -124,7 +128,6 @@ class ConfigLoader:
                 self.apply_style(style_name)
                 
             return self.save_style_configs()
-        return False
     
     def _load_style_configs(self):
         """加载样式配置"""
@@ -221,11 +224,6 @@ class ConfigLoader:
 
         if config_type == "settings":
             return {
-                "pre_resize": 1080,
-                "preloading": {
-                "preload_character": True,
-                "preload_background": True,
-                },
                 "cut_settings": {
                     "cut_mode": "全选剪切"
                 },
@@ -415,7 +413,7 @@ class ConfigLoader:
         # 新设置到现有数据中
         existing_data |= self.gui_settings
         
-        update_dll_gui_settings(CONFIGS.gui_settings)
+        update_dll_gui_settings(self.gui_settings)
         # 保存回文件
         return self._save_yaml_file("settings.yml", existing_data)
 

@@ -8,7 +8,7 @@ import re
 from path_utils import get_available_fonts
 from image_loader import clear_cache
 from config import CONFIGS
-from gui_style_components import ComponentEditor, COMPONENT_TYPES, ALIGN_MAPPING, REVERSE_ALIGN_MAPPING, COMPONENT_PROPERTIES
+from gui_style_components import ComponentEditor, COMPONENT_TYPES, COMPONENT_PROPERTIES
 
 DEFAULT_VALUES = {
     "aspect_ratio": "3:1",
@@ -96,9 +96,6 @@ class StyleWindow:
         self._scroll_scheduled = False
         self._last_scroll_time = 0
         self._scroll_after_id = None
-        
-        # 预加载标识
-        # self._pending_preload_tasks = {'character': False, 'background': False}
 
         self._setup_ui()
     
@@ -123,9 +120,6 @@ class StyleWindow:
         # 设置常规标签页
         self._setup_general_tab()
         
-        # 设置图层标签页
-        self._setup_layers_tab()
-        
         # 按钮框架
         button_frame = ttk.Frame(main_container)
         button_frame.pack(fill=tk.X, pady=10, padx=20)
@@ -139,6 +133,9 @@ class StyleWindow:
         ttk.Button(button_frame, text="取消", command=self._on_close).pack(
             side=tk.RIGHT, padx=5
         )
+        
+        # 延迟设置图层标签页
+        self.window.after(100, self._setup_layers_tab)
     
     def _setup_general_tab(self):
         """设置常规设置标签页"""
@@ -1014,16 +1011,12 @@ class StyleWindow:
         # 调用现有的样式选择方法，它会从默认配置中加载
         if current_style_name in CONFIGS.style_configs:
             # 从默认样式中获取组件配置
-            default_components = self._get_default_components(current_style_name)
+            default_components = CONFIGS.style.default_config[current_style_name].get("image_components", [])
             
-            if default_components is not None:
+            if default_components:
                 # 清理缓存
-                clear_cache("all")
-                
-                # 标记需要预加载
-                # self._pending_preload_tasks['character'] = True
-                # self._pending_preload_tasks['background'] = True
-                
+                clear_cache()
+
                 # 更新当前样式的组件
                 CONFIGS.style.image_components = default_components
                 
@@ -1034,29 +1027,6 @@ class StyleWindow:
                 self.gui.update_status(f"已重置样式 '{current_style_name}' 的组件到默认配置")
             else:
                 messagebox.showwarning("警告", f"默认配置中没有找到样式 '{current_style_name}' 的组件设置")
-    
-    def _get_default_components(self, style_name):
-        """从默认样式中获取组件配置"""
-        try:
-            # 使用CONFIGS中已有的方法加载默认样式
-            from path_utils import get_resource_path
-            import yaml
-            import os
-            
-            defaultstyle_path = get_resource_path(os.path.join("config", "defaultstyle.yml"))
-            if not os.path.exists(defaultstyle_path):
-                return None
-            
-            with open(defaultstyle_path, 'r', encoding='utf-8') as f:
-                default_styles = yaml.safe_load(f) or {}
-            
-            if style_name in default_styles:
-                return default_styles[style_name].get("image_components", [])
-        
-        except Exception as e:
-            print(f"获取默认组件失败: {e}")
-        
-        return None
     
     def _show_add_component_menu(self):
         """显示添加组件的选择菜单"""
@@ -1199,8 +1169,6 @@ class StyleWindow:
         
         # 清理所有缓存（包括背景、角色和组件缓存）
         clear_cache()
-        # self._pending_preload_tasks["background"] = True
-        # self._pending_preload_tasks["character"] = True
 
         # 加载新样式配置
         CONFIGS.apply_style(style_name)
@@ -1217,6 +1185,7 @@ class StyleWindow:
 
         # 通知主界面刷新预览
         self.gui.update_preview()
+        self.gui.update_status(f"已应用样式: {style_name}")
     
     def _rebuild_ui_from_style(self):
         """完全重新构建UI从当前样式"""
@@ -1409,32 +1378,16 @@ class StyleWindow:
             messagebox.showerror("错误", f"数值格式错误: {str(e)}")
             return False
         
-        # 按layer值排序
-        new_comps = image_components
-        ori_comps = CONFIGS.style.image_components
-        ori_comps.sort(key=lambda x: x.get("layer", 0))
-
-        for new_comp, ori_comp in zip(new_comps, ori_comps):
-            if new_comp != ori_comp:
-                clear_cache()
-                break
-        
         # 更新样式配置
         success = CONFIGS.update_style(style_name, style_data)
 
         if success:
-            # 立即应用样式到当前配置
-            CONFIGS.apply_style(style_name)
-            
             # 刷新GUI预览
             if self.gui:
                 self.gui.update_preview()
                 # 更新状态显示
                 self.gui.update_status(f"样式已应用: {self.style_var.get()}")
-            return True
-        else:
-            messagebox.showerror("错误", "应用样式失败")
-            return False
+        return True
     
     def _on_save_apply(self):
         """保存并应用样式设置"""
