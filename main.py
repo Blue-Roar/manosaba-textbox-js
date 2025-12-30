@@ -1,7 +1,7 @@
 """主程序入口"""
 
 from gui import ManosabaGUI
-from image_loader import get_enhanced_loader
+from image_processor import get_enhanced_loader
 
 if __name__ == "__main__":
     app = ManosabaGUI()

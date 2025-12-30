@@ -6,7 +6,7 @@ from PIL import ImageDraw
 import re
 
 from path_utils import get_available_fonts
-from image_loader import clear_cache
+from image_processor import clear_cache
 from config import CONFIGS
 from gui_style_components import ComponentEditor, COMPONENT_TYPES, COMPONENT_PROPERTIES
 

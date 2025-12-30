@@ -81,7 +81,7 @@ a = Analysis(
     ['main.py'],
     pathex=[os.getcwd()],
     binaries=[
-        ('image_loader.dll', '.'),
+        ('Image_Processor.dll', '.'),
         ('SDL2_image.dll', '.'),
         ('SDL2_ttf.dll', '.'),
         ('SDL2.dll', '.'),

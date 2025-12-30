@@ -5,7 +5,7 @@ import yaml
 import json
 from sys import platform
 from path_utils import get_base_path, get_resource_path, ensure_path_exists
-from image_loader import update_dll_gui_settings, update_style_config, clear_cache
+from image_processor import update_dll_gui_settings, update_style_config, clear_cache
 
 class StyleConfig:
     """样式配置类"""

@@ -12,9 +12,21 @@
    Noto 是 Google LLC 的商标。
 
    完整的许可证文本请参阅本目录下的 OFL.txt 文件。
---------------------------------------------------------------------
-[如果你还使用了他们的工具或代码，可以在此添加Apache 2.0部分]
-[如果使用了国旗图片，可以在此添加公共领域声明]
+
+2. 项目名称：SDL, SDL_image, SDL_ttf
+   来源：https://github.com/libsdl-org/SDL
+
+   本项目中的dll在制作时使用到了SDL相关的库
+
+   完整的许可证文本请参阅本目录下的 LICENSE.sdl.txt 文件。
+   SDL库使用到的dll的版权声明见 LICENSE.dav1d.txt 以及 LICENSE.webp.txt
+
+3. 项目名称：cJSON
+   来源：https://github.com/DaveGamble/cJSON
+
+   本项目的dll在制作时使用到了cJSON库
+   完整的许可证文本请参阅本目录下的 LICENSE.cjson.txt 文件。
+
 --------------------------------------------------------------------
 
 本项目中，上述素材未作修改。本项目的其他原创部分的版权与许可另行规定。

@@ -14,7 +14,7 @@
 1. **GUI 用户界面**: 当前的主分支 👈您在这里
    <details>
       <summary>GUI界面预览</summary>
-   <img width="600" alt="GUI 用户界面" src="https://github.com/user-attachments/assets/7cedbf8f-0124-43af-9314-41f1b5611e9b" />
+   <img src="https://github.com/user-attachments/assets/6cd00359-3ace-4c2c-b19e-12bdd70381fe" alt="GUI界面截图" />
    </details>
    
    - 简单易用的用户界面，同时带有预览。适合大多数用户。
@@ -65,12 +65,17 @@
 ### 界面预览
 <details>
    <summary>GUI 用户界面</summary>
-<img width="600" alt="GUI 用户界面" src="https://github.com/user-attachments/assets/7cedbf8f-0124-43af-9314-41f1b5611e9b" />
+<img width="600" alt="GUI主界面" src="https://github.com/user-attachments/assets/6cd00359-3ace-4c2c-b19e-12bdd70381fe" />
 </details>
 
 <details>
    <summary>GUI 设置界面</summary>
-<img width="600" alt="GUI 设置界面" src="https://github.com/user-attachments/assets/474b6a0f-dd80-40a3-b305-81174317e469" />
+<img width="600" alt="GUI设置界面" src="https://github.com/user-attachments/assets/26643f73-de43-4609-9792-44c0711e949c" />
+</details>
+
+<details>
+   <summary>GUI 样式编辑界面</summary>
+<img width="600" alt="GUI样式编辑界面" src="https://github.com/user-attachments/assets/c42bd862-e533-41f2-ab4d-7800e1c4cb70" />
 </details>
 
 ## 使用方法与配置教程
@@ -82,6 +87,8 @@
 背景、立绘等图片素材 © Re,AER LLC./Acacia
 
 表情符号图形（PNG格式）来源于 [Noto Emoji](https://github.com/googlefonts/noto-emoji) 项目，遵循 [SIL Open Font License 1.1](licenses/OFL.txt) 许可
+
+SDL，SDL_image，SDL_ttf，cJSON 等库遵循的协议见 [NOTICE.txt](licenses/NOTICE.txt) 中的说明
 
 ## 结语
 受B站上MarkCup做的夏目安安传话筒启发，以夏目安安传话筒为源代码编写了这样一个文本框脚本。

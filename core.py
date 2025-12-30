@@ -2,7 +2,7 @@
 from config import CONFIGS
 from clipboard_utils import ClipboardManager
 from sentiment_analyzer import SentimentAnalyzer
-from image_loader import get_enhanced_loader, generate_image_with_dll, set_dll_global_config, clear_cache, update_style_config, update_dll_gui_settings, draw_content_auto
+from image_processor import get_enhanced_loader, generate_image_with_dll, set_dll_global_config, clear_cache, update_style_config, update_dll_gui_settings, draw_content_auto
 
 import time
 import copy
