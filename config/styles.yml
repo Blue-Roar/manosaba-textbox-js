@@ -7,33 +7,32 @@
   - align: middle-center
     enabled: true
     fill_mode: height
-    layer: 3
+    layer: 0
     name: 背景
     type: background
-    use_fixed_background: false
   - align: bottom-left
     enabled: true
-    layer: 4
+    layer: 1
     name: 角色立绘
     offset_x: 900
     offset_y: -700
     scale: 1.4
     type: character
-    use_fixed_character: false
   - align: bottom-center
     enabled: true
-    layer: 5
+    layer: 2
+    name: 文本框
     overlay: 文本框1.webp
-    type: textbox
+    type: extra
   - align: bottom-left
     enabled: true
-    layer: 6
+    layer: 3
     offset_x: 200
     offset_y: -300
     overlay: 名字框.webp
     type: namebox
   - enabled: true
-    layer: 7
+    layer: 4
     name: 书图标
     offset_x: 20
     offset_y: 20
@@ -41,38 +40,36 @@
     type: extra
   - align: top-right
     enabled: true
-    layer: 8
+    layer: 5
     name: 右上背景
     overlay: 枝叶-右上.webp
     type: extra
   - align: top-right
     enabled: true
-    layer: 9
+    layer: 6
     name: 设置图标
     overlay: 齿轮-右上.webp
     type: extra
   - align: bottom-left
     enabled: true
-    layer: 10
+    layer: 7
     name: Auto图标
     offset_y: -25
     overlay: Auto off-左下.webp
     type: extra
   paste_image_settings:
-    align: center
+    align: middle-center
     enabled: mixed
     fill_mode: width
     height: 800
-    valign: middle
     width: 800
     x: 1500
     y: 200
   shadow_color: '#000000'
   shadow_offset_x: 0
   shadow_offset_y: 0
-  text_align: left
+  text_align: top-left
   text_color: '#FFFFFF'
-  text_valign: top
   textbox_height: 245
   textbox_width: 1579
   textbox_x: 470
@@ -90,24 +87,22 @@ default:
     layer: 0
     name: 背景
     type: background
-    use_fixed_background: false
   - align: bottom-center
     enabled: true
-    layer: 3
+    layer: 1
     name: 底部文本框
     overlay: 文本框1.webp
-    type: textbox
+    type: extra
   - align: bottom-left
     enabled: true
-    layer: 4
+    layer: 2
     name: 角色立绘
     offset_y: 50
     scale: 1.6
     type: character
-    use_fixed_character: false
   - align: bottom-left
     enabled: true
-    layer: 5
+    layer: 3
     name: 角色名称
     offset_x: 450
     offset_y: -400
@@ -115,20 +110,18 @@ default:
     scale: 1.2
     type: namebox
   paste_image_settings:
-    align: center
+    align: middle-center
     enabled: 'off'
-    fill_mode: width
+    fill_mode: fit
     height: 800
-    valign: middle
     width: 800
     x: 1500
     y: 200
   shadow_color: '#000000'
   shadow_offset_x: 0
   shadow_offset_y: 0
-  text_align: left
+  text_align: top-left
   text_color: '#FFFFFF'
-  text_valign: top
   textbox_height: 445
   textbox_width: 1579
   textbox_x: 760
@@ -146,7 +139,6 @@ default:
     layer: 0
     name: 背景
     type: background
-    use_fixed_background: false
   - align: bottom-left
     character_name: anan
     emotion_index: 12
@@ -159,20 +151,18 @@ default:
     type: character
     use_fixed_character: true
   paste_image_settings:
-    align: center
+    align: middle-center
     enabled: 'off'
     fill_mode: width
     height: 800
-    valign: middle
     width: 800
     x: 1500
     y: 200
   shadow_color: '#000000'
   shadow_offset_x: 0
   shadow_offset_y: 0
-  text_align: center
+  text_align: middle-center
   text_color: '#000000'
-  text_valign: middle
   textbox_height: 445
   textbox_width: 1000
   textbox_x: 750
@@ -180,42 +170,42 @@ default:
   use_character_color: true
 思索:
   aspect_ratio: '5:4'
-  bracket_color: '#9f91fb'
+  bracket_color: '#ef4f54'
   font_family: font2
   font_size: 80
   image_components:
   - align: bottom-right
     enabled: true
     fill_mode: height
-    layer: 3
+    layer: 0
     name: 背景
     overlay: c14.webp
     type: background
     use_fixed_background: true
   - align: middle-right
     enabled: true
-    layer: 4
+    layer: 1
     name: 背景遮罩
     overlay: 思考-背景5：4.webp
     scale: 1.5
     type: extra
   - align: bottom-right
     enabled: false
-    layer: 5
+    layer: 2
     name: 艾玛
     overlay: 思考-艾玛.webp
     scale: 1.4
     type: extra
   - align: bottom-right
     enabled: true
-    layer: 6
+    layer: 3
     name: 希罗
     overlay: 思考-希罗.webp
     scale: 1.4
     type: extra
   - align: middle-right
     enabled: true
-    layer: 7
+    layer: 4
     name: 小对话框
     offset_x: -840
     offset_y: 400
@@ -224,7 +214,7 @@ default:
     type: extra
   - align: middle-right
     enabled: true
-    layer: 8
+    layer: 5
     name: 红对话框
     offset_x: -800
     offset_y: -100
@@ -233,7 +223,7 @@ default:
     type: extra
   - align: middle-left
     enabled: false
-    layer: 9
+    layer: 6
     name: 赞同
     offset_x: 150
     offset_y: -270
@@ -242,7 +232,7 @@ default:
     type: extra
   - align: middle-left
     enabled: false
-    layer: 10
+    layer: 7
     name: 反驳
     offset_x: 150
     offset_y: -270
@@ -251,7 +241,7 @@ default:
     type: extra
   - align: middle-left
     enabled: true
-    layer: 11
+    layer: 8
     name: 疑问
     offset_x: 150
     offset_y: -270
@@ -262,7 +252,7 @@ default:
     enabled: true
     font_family: font2
     font_size: 60
-    layer: 12
+    layer: 9
     max_width: 500
     name: 小文本框内容
     offset_x: 70
@@ -274,20 +264,18 @@ default:
     text_color: '#000000'
     type: text
   paste_image_settings:
-    align: center
+    align: bottom-center
     enabled: always
     fill_mode: width
     height: 700
-    valign: bottom
     width: 1500
     x: 200
     y: 1200
   shadow_color: '#000000'
   shadow_offset_x: 0
   shadow_offset_y: 0
-  text_align: center
+  text_align: top-left
   text_color: '#FFFFFF'
-  text_valign: middle
   textbox_height: 280
   textbox_width: 1200
   textbox_x: 300

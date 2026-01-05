@@ -229,67 +229,44 @@ class ManosabaCore:
             self._notify_gui_status_change(False, False)
             return False
 
-    def _get_emotion_by_sentiment(self, text: str) -> int:
-        """根据文本情感获取对应的表情索引"""
-        if not (text.strip() and self.sentiment_analyzer_status['initialized']):
-            return None
-        try:
-            # 分析情感
-            sentiment = self.sentiment_analyzer.analyze_sentiment(text)
-            if not sentiment:
-                return None
-                
-            current_character = CONFIGS.get_character()
-            character_meta = CONFIGS.mahoshojo.get(current_character, {})
-            
-            # 查找对应情感的表情索引列表
-            emotion_indices = character_meta.get(sentiment, [])
-            if not emotion_indices:
-                return None
-                
-            # 随机选择一个表情索引
-            if emotion_indices:
-                return random.choice(emotion_indices)
-            else:
-                return None
-                
-        except Exception as e:
-            self.update_status(f"情感分析失败: {e}")
-            return None
-
     def _update_emotion_by_sentiment(self, text: str) -> bool:
-        """根据文本情感更新表情，返回是否成功更新"""
-        # 检查情感分析器是否已初始化
+        """根据文本情感更新表情，返回是否成功更新了至少一个角色图层"""
         if not self.sentiment_analyzer_status['initialized']:
             self.update_status("情感分析器未初始化，跳过情感分析")
             return False
+        
+        # 分析情感（只分析一次）
+        sentiment = self.sentiment_analyzer.analyze_sentiment(text)
+        if not sentiment:
+            return False
+        
+        updated = False
+        current_character = CONFIGS.get_character()
+        character_meta = CONFIGS.mahoshojo.get(current_character, {})
+        
+        # 获取所有角色图层
+        preview_components = CONFIGS.get_sorted_preview_components()
+        
+        for component in preview_components:
+            if not component.get("enabled", True):
+                continue
             
-        emotion_index = self._get_emotion_by_sentiment(text)
-        if emotion_index:
-            CONFIGS.selected_emotion = emotion_index
-            return True
-        return False
-
-    def _get_random_index(self, index_count: int, layer: int, cache_dict: dict, exclude_index: int = -1) -> int:
-        """随机选择表情或背景（避免连续相同）"""
-        if exclude_index == -1:
-            # 如果没有排除索引，使用缓存的索引作为排除
-            exclude_index = cache_dict.get(layer, -1)
+            if component.get("type") == "character":
+                character_name = component.get("character_name", current_character)
+                
+                # 为每个角色查找对应情感的表情
+                emotion_indices = CONFIGS.mahoshojo.get(character_name, {}).get(sentiment, [])
+                if emotion_indices:
+                    # 随机选择一个表情
+                    emotion_index = random.choice(emotion_indices)
+                    
+                    # 更新组件的表情索引
+                    component["emotion_index"] = emotion_index
+                    updated = True
+                    
+                    self.update_status(f"角色 {character_name} 表情更新为: {emotion_index}")
         
-        if exclude_index == -1 or index_count == 1:
-            final_index = random.randint(1, index_count)
-        else:
-            # 避免连续相同
-            available_indices = [i for i in range(1, index_count + 1) if i != exclude_index]
-            final_index = (
-                random.choice(available_indices)
-                if available_indices
-                else exclude_index
-            )
-        
-        # 更新缓存
-        cache_dict[layer] = final_index
-        return final_index
+        return updated
 
     def _active_process_allowed(self) -> bool:
         """校验当前前台进程是否在白名单"""
@@ -383,14 +360,13 @@ class ManosabaCore:
                     if current_character_name in CONFIGS.text_configs_dict:
                         component["textcfg"] = CONFIGS.text_configs_dict[current_character_name]
                         component["font_name"] = "font3"  # 使用默认字体
-                        print(f"为namebox添加角色名字配置: {current_character_name}")
                 elif comp_type == "character":
+                    character_name = component.get("character_name", current_character_name)
+                    emotion_index = component.get("emotion_index")
+                    
                     if component.get("use_fixed_character", False):
-                        # 使用固定角色
-                        character_name = component.get("character_name", current_character_name)
-                        emotion_index = component.get("emotion_index")
+                        # 使用固定表情
                         
-                        # 如果没有指定emotion_index，或者为None，使用随机
                         if emotion_index is None:
                             # 在过滤范围内随机选择表情
                             filter_name = component.get("emotion_filter", "全部")
@@ -412,8 +388,6 @@ class ManosabaCore:
                         # 更新组件的emotion_index
                         component["emotion_index"] = emotion_index
                     else:
-                        # 使用随机角色和表情
-                        character_name = current_character_name
                         
                         # 在过滤范围内随机选择表情
                         filter_name = component.get("emotion_filter", "全部")
@@ -479,22 +453,18 @@ class ManosabaCore:
                         else:
                             # 图片背景
                             background_info = f"背景: 图片({overlay})"
-                            # 确保文件名正确
-                            component["overlay"] = overlay
                         compress_layer = False
                     else:
                         # 随机背景
                         background_count = CONFIGS.background_count
                         if background_count > 0:
-                            background_index = random.randint(1, background_count)
-                            overlay = f"c{background_index}"
+                            overlay = random.choice(CONFIGS.background_list)
                             component["overlay"] = overlay
                             compress_layer = False
-                            background_info = f"背景: 随机(c{background_index})"
+                            background_info = f"背景: 随机({overlay})"
                         else:
                             # 没有背景图片
                             component["overlay"] = ""
-                            background_info = "背景: 无"
                 cp_components.append(component)
 
             # 如果没有收集到背景信息，说明没有背景组件
@@ -506,7 +476,6 @@ class ManosabaCore:
                 character_info = "角色: 无"
             
             # 使用DLL生成图像
-            print(f"生成预览的组件: {cp_components}")
             preview_image = generate_image_with_dll(
                 self._assets_path,
                 _calculate_canvas_size(),
@@ -636,15 +605,13 @@ class ManosabaCore:
             emotion_updated = self._update_emotion_by_sentiment(text)
             
             if emotion_updated:
-                self.update_status("情感分析完成，更新表情")
+                self.update_status("情感分析完成，更新多个角色表情")
                 print(f"[{int((time.time()-start_time)*1000)}] 情感分析完成")
                 # 刷新预览以显示新的表情
-                base_msg += f"情感: {self.sentiment_analyzer.selected_emotion}  "
+                base_msg = "情感匹配完成  "
                 self.generate_preview()
-                
             else:
                 self.update_status("情感分析失败，使用默认表情")
-                CONFIGS.selected_emotion = None
                 print(f"[{int((time.time()-start_time)*1000)}] 情感分析失败")
 
         if text == "" and image is None:
@@ -678,9 +645,6 @@ class ManosabaCore:
             bmp_bytes = draw_content_auto(
                 text=text,
                 content_image=image,
-                # text_rect=text_region,
-                # image_rect=image_region,
-                # image_paste_mode=enabled
             )
 
             print(f"[{int((time.time()-start_time)*1000)}] 图片合成完成")

@@ -11,7 +11,7 @@ class StyleConfig:
     """样式配置类"""
     
     def __init__(self):
-        self.default_config = self._load_default_style_config() # 默认配置文件的内容格式和styles.yml基本一致
+        self.default_config = self._load_default_style_config()
         if self.default_config:
             default = self.default_config.get("default", {})
             # 设置属性
@@ -85,8 +85,10 @@ class ConfigLoader:
         sm = self.gui_settings["sentiment_matching"]
         sm["enabled"] &= sm["display"]
         self.ai_models = self.gui_settings.get("sentiment_matching", {}).get("model_configs", {})
-
-        self.background_count = self._get_background_count()  # 背景图片数量
+        
+        # 背景列表
+        self.background_list = self._get_background_list()
+        self.background_count = len(self.background_list)  # 背景图片数量
         
         # 加载样式配置
         self._load_style_configs()
@@ -227,8 +229,9 @@ class ConfigLoader:
             style_data = self.style_configs[style_name]
 
             self.current_style = style_name
+
             clear_cache()
-            
+
             # 更新样式对象
             for key, value in style_data.items():
                 if hasattr(self.style, key):
@@ -293,20 +296,25 @@ class ConfigLoader:
             # 将RGB转换为十六进制
             self.style.bracket_color = f"#{font_color[0]:02x}{font_color[1]:02x}{font_color[2]:02x}"
 
-    def _get_background_count(self) -> int:
-        """动态获取背景图片数量"""
+    def _get_background_list(self) -> list:
+        """获取背景文件列表（移除c开头的限制）"""
         try:
             background_dir = get_resource_path(os.path.join("assets", "background"))
             if os.path.exists(background_dir):
-                # 统计所有c开头的背景图片
-                bg_files = [f for f in os.listdir(background_dir) if f.lower().startswith('c')]
-                return len(bg_files)
+                # 获取所有图片文件（移除c开头的限制）
+                image_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.webp']
+                bg_files = []
+                for f in os.listdir(background_dir):
+                    # 检查是否为图片文件
+                    if any(f.lower().endswith(ext) for ext in image_extensions):
+                        bg_files.append(f)
+                return sorted(bg_files)
             else:
                 print(f"警告：背景图片目录不存在: {background_dir}")
-                return 0
+                return []
         except Exception as e:
-            print(f"获取背景数量失败: {e}")
-            return 0
+            print(f"获取背景文件列表失败: {e}")
+            return []
     
     def reload_configs(self):
         """重新加载配置（用于热键更新后）"""

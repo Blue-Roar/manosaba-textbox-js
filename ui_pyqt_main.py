@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'Manosaba TextBoxNdVMfl.ui'
+## Form generated from reading UI file 'Manosaba TextBoxiFGdEo.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.0
 ##
@@ -11,16 +11,15 @@
 from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
-    QCursor, QFont, QFontDatabase, QGradient,
-    QIcon, QImage, QKeySequence, QLinearGradient,
-    QPainter, QPalette, QPixmap, QRadialGradient,
-    QTransform)
+from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
+    QFont, QFontDatabase, QGradient, QIcon,
+    QImage, QKeySequence, QLinearGradient, QPainter,
+    QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
     QGraphicsView, QGridLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QMainWindow, QMenu,
-    QMenuBar, QPushButton, QScrollArea, QSizePolicy,
-    QStatusBar, QTabWidget, QVBoxLayout, QWidget)
+    QLabel, QLineEdit, QMainWindow, QPushButton,
+    QScrollArea, QSizePolicy, QSpacerItem, QStatusBar,
+    QTabWidget, QVBoxLayout, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -31,13 +30,147 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.frame_Cfg = QFrame(self.centralwidget)
-        self.frame_Cfg.setObjectName(u"frame_Cfg")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        self.verticalLayout.setContentsMargins(-1, 0, -1, -1)
+        self.widget = QWidget(self.centralwidget)
+        self.widget.setObjectName(u"widget")
+        self.horizontalLayout_2 = QHBoxLayout(self.widget)
+        self.horizontalLayout_2.setSpacing(0)
+        self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
+        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.menu_setting = QPushButton(self.widget)
+        self.menu_setting.setObjectName(u"menu_setting")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.frame_Cfg.sizePolicy().hasHeightForWidth())
-        self.frame_Cfg.setSizePolicy(sizePolicy)
+        sizePolicy.setHeightForWidth(self.menu_setting.sizePolicy().hasHeightForWidth())
+        self.menu_setting.setSizePolicy(sizePolicy)
+        self.menu_setting.setMinimumSize(QSize(0, 30))
+        self.menu_setting.setStyleSheet(u"QPushButton {\n"
+"    background-color: #2b2b2b;\n"
+"    border: 1px solid #3a3a3a;\n"
+"    color: #d0d0d0;\n"
+"    padding: 5px 15px;\n"
+"    text-align: center;\n"
+"    font-size: 13px;\n"
+"    font-weight: normal;\n"
+"}\n"
+"\n"
+"QPushButton:hover {\n"
+"    background-color: #3a3a3a;\n"
+"    border: 1px solid #4a4a4a;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #4a4a4a;\n"
+"    border: 1px solid #5a5a5a;\n"
+"}\n"
+"\n"
+"QPushButton:checked {\n"
+"    background-color: #1a4b7e;\n"
+"    border: 1px solid #2a5b8e;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QPushButton:disabled {\n"
+"    background-color: #1a1a1a;\n"
+"    border: 1px solid #2a2a2a;\n"
+"    color: #5a5a5a;\n"
+"}")
+
+        self.horizontalLayout_2.addWidget(self.menu_setting)
+
+        self.menu_style = QPushButton(self.widget)
+        self.menu_style.setObjectName(u"menu_style")
+        sizePolicy.setHeightForWidth(self.menu_style.sizePolicy().hasHeightForWidth())
+        self.menu_style.setSizePolicy(sizePolicy)
+        self.menu_style.setMinimumSize(QSize(0, 30))
+        self.menu_style.setStyleSheet(u"QPushButton {\n"
+"    background-color: #2b2b2b;\n"
+"    border: 1px solid #3a3a3a;\n"
+"    color: #d0d0d0;\n"
+"    padding: 5px 15px;\n"
+"    text-align: center;\n"
+"    font-size: 13px;\n"
+"    font-weight: normal;\n"
+"}\n"
+"\n"
+"QPushButton:hover {\n"
+"    background-color: #3a3a3a;\n"
+"    border: 1px solid #4a4a4a;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #4a4a4a;\n"
+"    border: 1px solid #5a5a5a;\n"
+"}\n"
+"\n"
+"QPushButton:checked {\n"
+"    background-color: #1a4b7e;\n"
+"    border: 1px solid #2a5b8e;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QPushButton:disabled {\n"
+"    background-color: #1a1a1a;\n"
+"    border: 1px solid #2a2a2a;\n"
+"    color: #5a5a5a;\n"
+"}")
+
+        self.horizontalLayout_2.addWidget(self.menu_style)
+
+        self.menu_about = QPushButton(self.widget)
+        self.menu_about.setObjectName(u"menu_about")
+        sizePolicy.setHeightForWidth(self.menu_about.sizePolicy().hasHeightForWidth())
+        self.menu_about.setSizePolicy(sizePolicy)
+        self.menu_about.setMinimumSize(QSize(0, 30))
+        self.menu_about.setStyleSheet(u"QPushButton {\n"
+"    background-color: #2b2b2b;\n"
+"    border: 1px solid #3a3a3a;\n"
+"    color: #d0d0d0;\n"
+"    padding: 5px 15px;\n"
+"    text-align: center;\n"
+"    font-size: 13px;\n"
+"    font-weight: normal;\n"
+"}\n"
+"\n"
+"QPushButton:hover {\n"
+"    background-color: #3a3a3a;\n"
+"    border: 1px solid #4a4a4a;\n"
+"}\n"
+"\n"
+"QPushButton:pressed {\n"
+"    background-color: #4a4a4a;\n"
+"    border: 1px solid #5a5a5a;\n"
+"}\n"
+"\n"
+"QPushButton:checked {\n"
+"    background-color: #1a4b7e;\n"
+"    border: 1px solid #2a5b8e;\n"
+"    color: #ffffff;\n"
+"}\n"
+"\n"
+"QPushButton:disabled {\n"
+"    background-color: #1a1a1a;\n"
+"    border: 1px solid #2a2a2a;\n"
+"    color: #5a5a5a;\n"
+"}")
+
+        self.horizontalLayout_2.addWidget(self.menu_about)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_2.addItem(self.horizontalSpacer)
+
+
+        self.verticalLayout.addWidget(self.widget)
+
+        self.frame_Cfg = QFrame(self.centralwidget)
+        self.frame_Cfg.setObjectName(u"frame_Cfg")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.frame_Cfg.sizePolicy().hasHeightForWidth())
+        self.frame_Cfg.setSizePolicy(sizePolicy1)
         self.frame_Cfg.setFrameShape(QFrame.Shape.WinPanel)
         self.frame_Cfg.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout = QHBoxLayout(self.frame_Cfg)
@@ -75,11 +208,11 @@ class Ui_MainWindow(object):
 
         self.tabWidget_Layer = QTabWidget(self.centralwidget)
         self.tabWidget_Layer.setObjectName(u"tabWidget_Layer")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.tabWidget_Layer.sizePolicy().hasHeightForWidth())
-        self.tabWidget_Layer.setSizePolicy(sizePolicy1)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.tabWidget_Layer.sizePolicy().hasHeightForWidth())
+        self.tabWidget_Layer.setSizePolicy(sizePolicy2)
         self.tabWidget_Layer.setMinimumSize(QSize(0, 200))
         self.tab_bg1 = QWidget()
         self.tab_bg1.setObjectName(u"tab_bg1")
@@ -104,11 +237,11 @@ class Ui_MainWindow(object):
 
         self.label_bgColor = QLabel(self.groupBox_BgLayerCfg)
         self.label_bgColor.setObjectName(u"label_bgColor")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.label_bgColor.sizePolicy().hasHeightForWidth())
-        self.label_bgColor.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.label_bgColor.sizePolicy().hasHeightForWidth())
+        self.label_bgColor.setSizePolicy(sizePolicy3)
         self.label_bgColor.setMinimumSize(QSize(90, 0))
         self.label_bgColor.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.label_bgColor.setMargin(0)
@@ -117,11 +250,8 @@ class Ui_MainWindow(object):
 
         self.widget_bgColorPreview = QWidget(self.groupBox_BgLayerCfg)
         self.widget_bgColorPreview.setObjectName(u"widget_bgColorPreview")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.widget_bgColorPreview.sizePolicy().hasHeightForWidth())
-        self.widget_bgColorPreview.setSizePolicy(sizePolicy3)
+        sizePolicy.setHeightForWidth(self.widget_bgColorPreview.sizePolicy().hasHeightForWidth())
+        self.widget_bgColorPreview.setSizePolicy(sizePolicy)
         self.widget_bgColorPreview.setMinimumSize(QSize(30, 30))
 
         self.gridLayout.addWidget(self.widget_bgColorPreview, 4, 5, 1, 1)
@@ -192,8 +322,8 @@ class Ui_MainWindow(object):
 
         self.Button_RefreshPreview = QPushButton(self.widget_PreviewInfo)
         self.Button_RefreshPreview.setObjectName(u"Button_RefreshPreview")
-        sizePolicy3.setHeightForWidth(self.Button_RefreshPreview.sizePolicy().hasHeightForWidth())
-        self.Button_RefreshPreview.setSizePolicy(sizePolicy3)
+        sizePolicy.setHeightForWidth(self.Button_RefreshPreview.sizePolicy().hasHeightForWidth())
+        self.Button_RefreshPreview.setSizePolicy(sizePolicy)
         self.Button_RefreshPreview.setMinimumSize(QSize(0, 25))
         self.Button_RefreshPreview.setIconSize(QSize(16, 16))
 
@@ -207,7 +337,7 @@ class Ui_MainWindow(object):
         self.scrollArea.setWidgetResizable(True)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 697, 319))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 697, 325))
         self.horizontalLayout_5 = QHBoxLayout(self.scrollAreaWidgetContents)
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
         self.PreviewImg = QGraphicsView(self.scrollAreaWidgetContents)
@@ -228,20 +358,6 @@ class Ui_MainWindow(object):
         self.statusbar = QStatusBar(MainWindow)
         self.statusbar.setObjectName(u"statusbar")
         MainWindow.setStatusBar(self.statusbar)
-        self.menubar = QMenuBar(MainWindow)
-        self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 737, 33))
-        self.menu_setting = QMenu(self.menubar)
-        self.menu_setting.setObjectName(u"menu_setting")
-        self.menu_style = QMenu(self.menubar)
-        self.menu_style.setObjectName(u"menu_style")
-        self.menu_about = QMenu(self.menubar)
-        self.menu_about.setObjectName(u"menu_about")
-        MainWindow.setMenuBar(self.menubar)
-
-        self.menubar.addAction(self.menu_setting.menuAction())
-        self.menubar.addAction(self.menu_style.menuAction())
-        self.menubar.addAction(self.menu_about.menuAction())
 
         self.retranslateUi(MainWindow)
 
@@ -253,6 +369,9 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"\u9b54\u88c1\u6587\u672c\u6846", None))
+        self.menu_setting.setText(QCoreApplication.translate("MainWindow", u"\u8bbe\u7f6e", None))
+        self.menu_style.setText(QCoreApplication.translate("MainWindow", u"\u6837\u5f0f", None))
+        self.menu_about.setText(QCoreApplication.translate("MainWindow", u"\u5173\u4e8e", None))
         self.label_StyleSelect.setText(QCoreApplication.translate("MainWindow", u"\u6837\u5f0f\u9009\u62e9", None))
         self.checkBox_AutoPaste.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u52a8\u7c98\u8d34", None))
         self.checkBox_AutoSend.setText(QCoreApplication.translate("MainWindow", u"\u81ea\u52a8\u53d1\u9001", None))
@@ -264,8 +383,5 @@ class Ui_MainWindow(object):
         self.tabWidget_Layer.setTabText(self.tabWidget_Layer.indexOf(self.tab_bg1), QCoreApplication.translate("MainWindow", u"\u80cc\u666f", None))
         self.label_PreviewInfo.setText(QCoreApplication.translate("MainWindow", u"\u9884\u89c8\u4fe1\u606f", None))
         self.Button_RefreshPreview.setText(QCoreApplication.translate("MainWindow", u"\u5237\u65b0", None))
-        self.menu_setting.setTitle(QCoreApplication.translate("MainWindow", u"\u8bbe\u7f6e", None))
-        self.menu_style.setTitle(QCoreApplication.translate("MainWindow", u"\u6837\u5f0f", None))
-        self.menu_about.setTitle(QCoreApplication.translate("MainWindow", u"\u5173\u4e8e", None))
     # retranslateUi
 

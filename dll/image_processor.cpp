@@ -11,7 +11,7 @@
 #include <vector>
 
 // 计时用
-#define _DEBUG
+// #define _DEBUG
 #ifdef _DEBUG
 #include <chrono>
 #define DEBUG_PRINT(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
@@ -184,11 +184,10 @@ struct StyleConfig {
   int font_size = 55;
 
   // 粘贴图片设置
-  char paste_align[32] = "center";
+  char paste_align[32] = "center-middle";
   char paste_enabled[32] = "mixed";
   char paste_fill_mode[32] = "width";
   int paste_height = 800;
-  char paste_valign[32] = "middle";
   int paste_width = 800;
   int paste_x = 1500;
   int paste_y = 200;
@@ -196,9 +195,8 @@ struct StyleConfig {
   unsigned char shadow_color[4] = {0, 0, 0, 255}; // #000000
   int shadow_offset_x = 0;
   int shadow_offset_y = 0;
-  char text_align[32] = "left";
+  char text_align[32] = "left-top";
   unsigned char text_color[4] = {255, 255, 255, 255}; // #FFFFFF
-  char text_valign[32] = "top";
   int textbox_height = 245;
   int textbox_width = 1579;
   int textbox_x = 470;
@@ -509,13 +507,6 @@ public:
       if (height && cJSON_IsNumber(height))
         style_config_.paste_height = height->valueint;
 
-      cJSON *valign_item = cJSON_GetObjectItem(paste_settings, "valign");
-      if (valign_item && cJSON_IsString(valign_item)) {
-        const char *valign = valign_item->valuestring;
-        if (valign)
-          strncpy(style_config_.paste_valign, valign, sizeof(style_config_.paste_valign) - 1);
-      }
-
       cJSON *width = cJSON_GetObjectItem(paste_settings, "width");
       if (width && cJSON_IsNumber(width))
         style_config_.paste_width = width->valueint;
@@ -573,14 +564,6 @@ public:
         style_config_.text_color[1] = g;
         style_config_.text_color[2] = b;
         style_config_.text_color[3] = 255;
-      }
-    }
-
-    cJSON *text_valign_item = cJSON_GetObjectItem(json_root, "text_valign");
-    if (text_valign_item && cJSON_IsString(text_valign_item)) {
-      const char *text_valign = text_valign_item->valuestring;
-      if (text_valign) {
-        strncpy(style_config_.text_valign, text_valign, sizeof(style_config_.text_valign) - 1);
       }
     }
 
@@ -1498,11 +1481,6 @@ private:
 
         bg_surface = LoadBackgroundImage(bg_name);
       }
-    } else {
-      // 随机背景
-      char bg_name[32];
-      snprintf(bg_name, sizeof(bg_name), "c%d", background_index);
-      bg_surface = LoadBackgroundImage(bg_name);
     }
 
     if (!bg_surface)
@@ -1832,7 +1810,7 @@ private:
     int offset_y = static_cast<int>(GetJsonNumber(comp_obj, "offset_y", 0));
 
     // 获取最大宽度（用于换行）
-    int max_width = static_cast<int>(GetJsonNumber(comp_obj, "max_width", 0));
+    int max_width = static_cast<int>(GetJsonNumber(comp_obj, "max_width", 1000));
 
     // 获取字体
     TTF_Font *font = GetFontCached(font_name, font_size);
@@ -2003,7 +1981,23 @@ private:
     if (resized_surface) {
       // 使用工具函数计算对齐位置
       int final_x, final_y;
-      utils::CalculateAlignment(paste_x, paste_y, paste_width, paste_height, scaled_rect.w, scaled_rect.h, config->paste_align, config->paste_valign, final_x, final_y);
+      // 从合并的对齐方式中解析水平和垂直对齐
+      std::string align_str(config->paste_align);
+      std::string halign = "center"; // 默认
+      std::string valign = "middle"; // 默认
+
+      if (align_str.find("left") != std::string::npos) {
+        halign = "left";
+      } else if (align_str.find("right") != std::string::npos) {
+        halign = "right";
+      }
+
+      if (align_str.find("top") != std::string::npos) {
+        valign = "top";
+      } else if (align_str.find("bottom") != std::string::npos) {
+        valign = "bottom";
+      }
+      utils::CalculateAlignment(paste_x, paste_y, paste_width, paste_height, scaled_rect.w, scaled_rect.h, halign.c_str(), valign.c_str(), final_x, final_y);
 
       SDL_Rect dest_rect = {final_x, final_y, scaled_rect.w, scaled_rect.h};
       DEBUG_PRINT("Drawing image to canvas at (%d, %d) with size %dx%d", dest_rect.x, dest_rect.y, dest_rect.w, dest_rect.h);
@@ -2542,17 +2536,14 @@ void ImageLoaderManager::DrawTextAndEmojiToCanvas(SDL_Surface *canvas, const std
   // 10. 绘制文本
   bool has_shadow = (config->shadow_offset_x != 0 || config->shadow_offset_y != 0);
 
-  // 计算垂直起始位置
+  // 计算垂直起始位置 - 现在从合并的text_align中解析
   int total_height = static_cast<int>(lines_segments.size() * line_height);
   int current_y = text_y;
 
-  if (strcmp(config->text_valign, "middle") == 0) {
-    current_y += (text_height - total_height) / 2;
-  } else if (strcmp(config->text_valign, "bottom") == 0) {
-    current_y += text_height - total_height;
-  }
+  // 从合并的对齐方式中提取垂直对齐部分
+  std::string align_str(config->text_align);
 
-  DEBUG_PRINT("Vertical alignment: %s, start Y: %d, total height: %d", config->text_valign, current_y, total_height);
+  DEBUG_PRINT("Alignment '%s', start Y: %d, total height: %d", config->text_align, current_y, total_height);
 
   // 绘制每一行
   for (size_t line_idx = 0; line_idx < lines_segments.size(); line_idx++) {
@@ -2579,13 +2570,11 @@ void ImageLoaderManager::DrawTextAndEmojiToCanvas(SDL_Surface *canvas, const std
 
     // 计算水平起始位置
     int current_x = text_x;
-    if (strcmp(config->text_align, "center") == 0) {
-      current_x += (text_width - line_width) / 2;
-    } else if (strcmp(config->text_align, "right") == 0) {
+    if (align_str.find("right") != std::string::npos) {
       current_x += text_width - line_width;
+    } else if (align_str.find("center") != std::string::npos) {
+      current_x += (text_width - line_width) / 2;
     }
-
-    DEBUG_PRINT("Line %zu: width %d, start X: %d (alignment: %s)", line_idx, line_width, current_x, config->text_align);
 
     // 绘制当前行的所有分段
     for (const auto &seg : line_segs) {

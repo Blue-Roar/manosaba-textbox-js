@@ -575,7 +575,7 @@ class Ui_StyleWindow(object):
         self.tabWidget.setCurrentIndex(0)
 
 
-        QMetaObject.connectSlotsByName(Form)
+        # QMetaObject.connectSlotsByName(Form)
     # setupUi
 
     def retranslateUi(self, Form):
@@ -610,7 +610,7 @@ class Ui_StyleWindow(object):
         self.radioButton_alway.setText(QCoreApplication.translate("Form", u"\u59cb\u7ec8", None))
         self.radioButton_mixed.setText(QCoreApplication.translate("Form", u"\u6df7\u5408\u5185\u5bb9", None))
         self.radioButton_off.setText(QCoreApplication.translate("Form", u"\u5173\u95ed", None))
-        self.label_17.setText(QCoreApplication.translate("Form", u"\u6587\u672c\u533a\u57df", None))
+        self.label_17.setText(QCoreApplication.translate("Form", u"\u56fe\u50cf\u533a\u57df", None))
         self.label_18.setText(QCoreApplication.translate("Form", u"X", None))
         self.label_19.setText(QCoreApplication.translate("Form", u"Y", None))
         self.label_20.setText(QCoreApplication.translate("Form", u"\u5bbd", None))

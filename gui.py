@@ -2,10 +2,9 @@
 """PyQt 版本主程序入口"""
 
 import sys
-import os
-from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QCheckBox, QComboBox, QGroupBox, QTabWidget, QScrollArea, QSizePolicy, QSpacerItem, QLineEdit
+from PySide6.QtWidgets import QApplication, QMainWindow, QGraphicsScene, QGraphicsPixmapItem, QSizePolicy, QDialog
 from PySide6.QtCore import Qt, QTimer, QPoint, QMetaObject, Slot, Q_ARG
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QImage, QPixmap, QIcon
 import threading
 import traceback
 
@@ -13,6 +12,8 @@ from ui_pyqt_main import Ui_MainWindow
 from core import ManosabaCore
 from config import CONFIGS
 from pyqt_tabs import CharacterTabWidget, BackgroundTabWidget
+from image_processor import clear_cache
+from path_utils import get_resource_path
 
 
 class ManosabaMainWindow(QMainWindow):
@@ -50,12 +51,7 @@ class ManosabaMainWindow(QMainWindow):
         
         # 初始化数据
         self._init_data()
-        
-        # 添加防抖定时器
-        self._preview_update_timer = QTimer()
-        self._preview_update_timer.setSingleShot(True)
-        self._preview_update_timer.timeout.connect(self._delayed_update_preview)
-        
+
         # 初始预览
         QTimer.singleShot(100, self.update_preview)
 
@@ -87,10 +83,9 @@ class ManosabaMainWindow(QMainWindow):
             if widget:
                 widget.deleteLater()
             self.ui.tabWidget_Layer.removeTab(1)
-        
+
         # 清空标签页引用
         self.character_tabs.clear()
-        self.background_tab = None
         
         # 获取预览样式的组件
         sorted_components = CONFIGS.get_sorted_preview_components()
@@ -117,17 +112,25 @@ class ManosabaMainWindow(QMainWindow):
             }
             
             # 创建背景标签页管理器
-            self.background_tab = BackgroundTabWidget(
-                self, 
-                component_config=bg_component,
-                layer_index=bg_layer,
-                ui_controls=ui_controls
-            )
-            self.background_tab.config_changed.connect(self._on_component_config_changed)
-            
-            # 更新标签页标题
-            tab_name = bg_component.get("name", "背景")
-            self.ui.tabWidget_Layer.setTabText(0, tab_name)
+            if not hasattr(self, 'init_background_tab'):
+                self.background_tab = BackgroundTabWidget(
+                    self, 
+                    component_config=bg_component,
+                    layer_index=bg_layer,
+                    ui_controls=ui_controls
+                )
+                setattr(self, 'init_background_tab', True)
+                # 连接信号到更新预览
+                self.background_tab.config_changed.connect(self._bg_chara_Cfg_changed)
+                
+                # 更新标签页标题
+                tab_name = bg_component.get("name", "背景")
+                self.ui.tabWidget_Layer.setTabText(0, tab_name)
+            else:
+                self.background_tab._component_config = bg_component
+                self.background_tab.layer_index = bg_layer
+                self.background_tab._init_from_config()
+
         
         # 为每个角色组件创建标签页
         for component in character_components:
@@ -135,7 +138,9 @@ class ManosabaMainWindow(QMainWindow):
             
             # 创建角色标签页
             tab = CharacterTabWidget(self, component_config=component, layer_index=layer_index)
-            tab.config_changed.connect(self._on_component_config_changed)
+            
+            # 连接信号到更新预览
+            tab.config_changed.connect(self._bg_chara_Cfg_changed)
             
             # 使用组件名、角色名或默认名称
             if "name" in component:
@@ -149,14 +154,16 @@ class ManosabaMainWindow(QMainWindow):
             
             self.ui.tabWidget_Layer.addTab(tab, tab_name)
             self.character_tabs.append(tab)
-    
-    def _on_component_config_changed(self):
-        """组件配置改变事件 - 添加防抖"""
-        # 取消之前的定时器
-        self._preview_update_timer.stop()
-        # 重新启动定时器，延迟300ms更新预览
-        self._preview_update_timer.start(300)
-    
+        
+        # 更新当前角色
+        CONFIGS.current_character = CONFIGS._get_current_character_from_layers()
+
+    def _bg_chara_Cfg_changed(self):
+        """背景或角色配置已更改"""
+
+        clear_cache()
+        self.update_preview()
+
     def _init_style_combo(self):
         """初始化样式选择下拉框"""
         available_styles = list(CONFIGS.style_configs.keys())
@@ -228,9 +235,9 @@ class ManosabaMainWindow(QMainWindow):
         self.ui.Button_RefreshPreview.clicked.connect(self.update_preview)
         
         # 菜单栏
-        self.ui.menu_setting.triggered.connect(self._open_settings)
-        self.ui.menu_style.triggered.connect(self._open_style)
-        self.ui.menu_about.triggered.connect(self._open_about)
+        self.ui.menu_setting.clicked.connect(self._open_settings)
+        self.ui.menu_style.clicked.connect(self._open_style)
+        self.ui.menu_about.clicked.connect(self._open_about)
     
     def _init_data(self):
         """初始化数据"""
@@ -312,18 +319,9 @@ class ManosabaMainWindow(QMainWindow):
             self.update_status("情感匹配功能已启用")
         else:
             self.update_status("情感匹配功能已禁用")
-        
-    def _delayed_update_preview(self):
-        """延迟更新预览"""
-        self.update_preview()
-        self.update_status("组件配置已更新")
 
     def update_preview(self):
         """更新预览"""
-        # 确保没有重复调用
-        if self._preview_update_timer.isActive():
-            return
-            
         try:
             preview_image, info = self.core.generate_preview()
             self._update_preview_ui(preview_image, info)
@@ -471,17 +469,83 @@ class ManosabaMainWindow(QMainWindow):
     
     def _open_style(self):
         """打开样式窗口"""
-        # TODO: 实现样式窗口
-        self.update_status("样式窗口功能待实现")
+        from pyqt_style import StyleWindow
+        current_style = CONFIGS.current_style
+        style_window = StyleWindow(self, self.core, self, current_style)
     
+        # 执行对话框
+        style_window.exec()
+
+        if current_style != CONFIGS.current_style:
+            index = self.ui.comboBox_StyleSelect.findText(CONFIGS.current_style)
+            if index >= 0:
+                self.ui.comboBox_StyleSelect.setCurrentIndex(index)
+
     def _open_about(self):
         """打开关于窗口"""
         # TODO: 实现关于窗口
         self.update_status("关于窗口功能待实现")
 
+    def highlight_preview_rect(self, x, y, width, height, area_type="text"):
+        """在预览图上高亮显示指定区域"""
+        try:
+            from PySide6.QtGui import QPen, QColor
+            
+            scene = self.ui.PreviewImg.scene()
+            if not scene:
+                return
+            
+            # 清除之前的高亮矩形
+            for item in scene.items():
+                if hasattr(item, 'is_highlight_rect') and item.is_highlight_rect:
+                    scene.removeItem(item)
+            
+            # 创建新的高亮矩形
+            from PySide6.QtWidgets import QGraphicsRectItem
+            rect_item = QGraphicsRectItem(x, y, width, height)
+            
+            # 根据区域类型设置颜色
+            if area_type == "text":
+                pen = QPen(QColor(0, 255, 0, 200))  # 绿色，半透明
+            else:
+                pen = QPen(QColor(255, 0, 0, 200))  # 红色，半透明
+            
+            pen.setWidth(3)
+            pen.setStyle(Qt.DashLine)
+            rect_item.setPen(pen)
+            rect_item.is_highlight_rect = True
+            rect_item.setZValue(1000)  # 确保在最上层
+            
+            scene.addItem(rect_item)
+            
+            # 3秒后自动清除
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(3000, lambda: self.clear_highlight_rect(rect_item))
+            
+        except Exception as e:
+            print(f"高亮预览区域失败: {e}")
+
+    def clear_highlight_rect(self, rect_item=None):
+        """清除高亮矩形"""
+        scene = self.ui.PreviewImg.scene()
+        if not scene:
+            return
+        
+        if rect_item:
+            scene.removeItem(rect_item)
+        else:
+            # 清除所有高亮矩形
+            for item in scene.items():
+                if hasattr(item, 'is_highlight_rect') and item.is_highlight_rect:
+                    scene.removeItem(item)
+                    
 def main():
     """主函数"""
     app = QApplication(sys.argv)
+    
+    # 设置应用程序图标
+    icon_path = get_resource_path("assets/icon.ico")
+    app.setWindowIcon(QIcon(icon_path))
     
     # 创建主窗口
     main_window = ManosabaMainWindow()
