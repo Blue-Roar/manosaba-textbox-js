@@ -7,9 +7,12 @@ version: "2.0.0"
 # 版本历史 记录的是exe的更新，并非代码的更新记录
 history:
   - version: "2.0.0"
-    date: "2026-1-4"
+    date: "2026-1-6"
     description:
-      - "重做了UI"
+      - "使用PyQT重做了UI"
+      - "修改了部分功能的布局"
+      - "添加了多角色实时编辑表情的功能"
+      - "添加了纯色背景的功能"
   - version: "1.7.0"
     date: "2025-12-30"
     description:
@@ -76,7 +79,6 @@ history:
 
 # 程序信息
 program:
-  name: "魔裁文本框生成器"
   author:
     - "oplivilqo"
     - "Kwicxy"
@@ -85,11 +87,5 @@ program:
     - "BaiJin0224"
     - "CCYellowStar2"
     - "Existence"
-  description: "魔裁文本框生成工具"
+  description: "魔裁文本框生成工具 PyQT版"
   github: "https://github.com/YangQwQ/ManosabaTextbox-GUI"
-  origin_project: "https://github.com/oplivilqo/manosaba_text_box"
-  
-# 联系信息
-contact:
-  qq_group:
-    - "1037032551"

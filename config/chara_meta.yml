@@ -4,6 +4,16 @@ ema:
   offset: [-180,1700]
   scale: 0.4
   font: font3
+  text:  
+    - text: 樱
+      font_color: [253, 145, 175]
+      font_size: 136
+    - text: 羽
+      font_size: 76
+    - text: 艾
+      font_size: 116
+    - text: 玛
+      font_size: 76
   "平静": [3]
   "喜悦": [3,8]
   "喜爱": [6,11,10]
@@ -19,6 +29,16 @@ hiro:
   offset: [-350,1750]
   scale: 0.5
   font: font3
+  text:
+    - text: 二
+      font_color: [239, 79, 84]
+      font_size: 136
+    - text: 阶堂
+      font_size: 76
+    - text: 希
+      font_size: 116
+    - text: 罗
+      font_size: 76
   "平静": [5,6]
   "喜悦": [5,6,13,14]
   "喜爱": [9,10]
@@ -31,6 +51,17 @@ hiro:
 CreatureHiro:
   full_name: 二阶堂希罗（魔女化）
   emotion_count: 25
+  font: font3
+  text:
+    - text: 二
+      font_color: [239, 79, 84]
+      font_size: 136
+    - text: 阶堂
+      font_size: 76
+    - text: 希
+      font_size: 116
+    - text: 罗
+      font_size: 76
   offset: [-160,1790]
   offsetX:
     "2": -40
@@ -43,7 +74,6 @@ CreatureHiro:
     "12": -40
     "15": -40
   scale: 0.41
-  font: font3
   "平静": [1,2,3,5,8,9,10,11]
   "喜悦": [3,5,8,10,11,25]
   "喜爱": [25]
@@ -59,6 +89,14 @@ sherry:
   offset: [-350,2100]
   scale: 0.47
   font: font3
+  text:
+    - text: 橘
+      font_color: [137, 177, 251]
+      font_size: 136
+    - text: 雪
+      font_size: 116
+    - text: 莉
+      font_size: 76
   "平静": [3,6]
   "喜悦": [3,7]
   "喜爱": [5,7]
@@ -74,6 +112,16 @@ hanna:
   offset: [-480,1750]
   scale: 0.45
   font: font3
+  text:
+    - text: 远
+      font_color: [169, 199, 30]
+      font_size: 136
+    - text: 野
+      font_size: 76
+    - text: 汉
+      font_size: 116
+    - text: 娜
+      font_size: 76
   "平静": [3,7]
   "喜悦": [3,7]
   "喜爱": [3,5,6]
@@ -89,6 +137,16 @@ anan:
   offset: [-550,1850]
   scale: 0.48
   font: font3
+  text:
+    - text: 夏
+      font_color: [159, 145, 251]
+      font_size: 136
+    - text: 目
+      font_size: 76
+    - text: 安
+      font_size: 116
+    - text: 安
+      font_size: 76
   "平静": [7]
   "喜悦": [5,7,9,11]
   "喜爱": [5,9,11]
@@ -102,10 +160,18 @@ yuki:
   full_name: 月代雪
   emotion_count: 20
   offset: [-550,1850]
-  offsetY:
-    "12": 50
   scale: 0.47
   font: font3
+  text:
+    - text: 月
+      font_color: [195, 209, 231]
+      font_size: 136
+    - text: 代
+      font_size: 76
+    - text: 雪
+      font_size: 116
+  offsetY:
+    "12": 50
   "平静": [2,3,4,5]
   "喜悦": [2,3,4,5,6,7,8,18,19]
   "喜爱": [8,18,19]
@@ -121,6 +187,16 @@ meruru:
   offset: [-200,1900]
   scale: 0.55
   font: font3
+  text:
+    - text: 冰
+      font_color: [227, 185, 175]
+      font_size: 136
+    - text: 上
+      font_size: 76
+    - text: 梅
+      font_size: 116
+    - text: 露露
+      font_size: 76
   "平静": [13,14]
   "喜悦": [13,14]
   "喜爱": [8,9,13,14]
@@ -136,6 +212,16 @@ noa:
   offset: [-500,1950]
   scale: 0.47
   font: font3
+  text:
+    - text: 城
+      font_color: [104, 223, 231]
+      font_size: 136
+    - text: 崎
+      font_size: 76
+    - text: 诺
+      font_size: 116
+    - text: 亚
+      font_size: 76
   "平静": [3]
   "喜悦": [3,7]
   "喜爱": [1,5,7]
@@ -151,6 +237,16 @@ reia:
   offset: [-420,2600]
   scale: 0.54
   font: font3
+  text:
+    - text: 莲
+      font_color: [253, 177, 88]
+      font_size: 136
+    - text: 见
+      font_size: 76
+    - text: 蕾
+      font_size: 116
+    - text: 雅
+      font_size: 76
   "平静": [3,7]
   "喜悦": [7]
   "喜爱": [5,7]
@@ -166,6 +262,16 @@ miria:
   offset: [-300,2200]
   scale: 0.49
   font: font3
+  text:
+    - text: 佐
+      font_color: [235, 207, 139]
+      font_size: 136
+    - text: 伯
+      font_size: 76
+    - text: 米
+      font_size: 116
+    - text: 莉亚
+      font_size: 76
   "平静": [7]
   "喜悦": [7]
   "喜爱": [5,7]
@@ -181,6 +287,16 @@ nanoka:
   offset: [-450,1975]
   scale: 0.56
   font: font3
+  text:
+    - text: 黑
+      font_color: [131, 143, 147]
+      font_size: 136
+    - text: 部
+      font_size: 76
+    - text: 奈
+      font_size: 116
+    - text: 叶香
+      font_size: 76
   "平静": [3,7]
   "喜悦": [3,7]
   "喜爱": [5,7]
@@ -196,6 +312,16 @@ mago:
   offset: [-300,2140]
   scale: 0.47
   font: font3
+  text:
+    - text: 宝
+      font_color: [185, 124, 235]
+      font_size: 136
+    - text: 生
+      font_size: 76
+    - text: 玛
+      font_size: 116
+    - text: 格
+      font_size: 76
   "平静": [3]
   "喜悦": [3,5,7]
   "喜爱": [5,7]
@@ -211,6 +337,16 @@ alisa:
   offset: [-180,2000]
   scale: 0.46
   font: font3
+  text:
+    - text: 紫
+      font_color: [235, 75, 60]
+      font_size: 136
+    - text: 藤
+      font_size: 76
+    - text: 亚
+      font_size: 116
+    - text: 里沙
+      font_size: 76
   "平静": [3,6,7]
   "喜悦": [7]
   "喜爱": [7]
@@ -226,6 +362,16 @@ coco:
   offset: [-200,1920]
   scale: 0.45
   font: font3
+  text:
+    - text: 泽
+      font_color: [251, 114, 78]
+      font_size: 136
+    - text: 渡
+      font_size: 76
+    - text: 可
+      font_size: 116
+    - text: 可
+      font_size: 76
   "平静": [3]
   "喜悦": [3,7]
   "喜爱": [5]
@@ -243,6 +389,19 @@ coco:
 #     offset: 立绘偏移值
 #     scale: 立绘缩放
 #     font: font3
+#     text:
+#       - text: 典
+#         font_color: [251, 114, 78]
+#         font_size: 136
+#       - text: 狱
+#         font_color: [255, 255, 255] # 字体颜色不填的话默认白色
+#         font_size: 76
+#       - text: 长
+#         font_color: [255, 255, 255]
+#         font_size: 116
+#       - text: ""
+#         font_color: [255, 255, 255]
+#         font_size: 76
 #     "平静": 
 #     "喜悦": 
 #     "喜爱": 

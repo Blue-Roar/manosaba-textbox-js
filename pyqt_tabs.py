@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """标签页管理模块"""
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QHBoxLayout, QLabel, QComboBox, QCheckBox, QLineEdit
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtWidgets import QWidget
+from PySide6.QtCore import Signal
 from ui_pyqt_components import Ui_CharaCfg
 from config import CONFIGS
 from image_processor import clear_cache
@@ -18,7 +18,8 @@ class BackgroundTabWidget(QWidget):
         # 存储组件配置的引用
         self.layer_index = layer_index
         self._component_config = component_config or {}  # 存储传入的配置
-        
+        self._ignore_signals = False
+
         # 使用UI设计器中的控件
         self.checkBox_randomBg = ui_controls.get('checkBox_randomBg')
         self.comboBox_bgSelect = ui_controls.get('comboBox_bgSelect')
@@ -257,7 +258,8 @@ class CharacterTabWidget(QWidget):
         # 存储组件配置的引用
         self.layer_index = layer_index
         self.current_character_id = None
-        self._ignore_signals = False  # 添加忽略信号标志
+        self._ignore_signals = False
+        self._component_config = component_config
         
         # 使用UI模板
         self.ui = Ui_CharaCfg()
@@ -280,12 +282,19 @@ class CharacterTabWidget(QWidget):
         
     def get_component_config(self):
         """获取当前图层的组件配置"""
+        # 优先使用传入的配置
+        if self._component_config:
+            return self._component_config
+        
+        # 如果没有传入配置，从预览样式中获取
         if not CONFIGS.preview_style or 'image_components' not in CONFIGS.preview_style:
             return None
         
         for component in CONFIGS.preview_style['image_components']:
             if component.get("layer") == self.layer_index:
+                self._component_config = component  # 缓存配置
                 return component
+        
         return None
     
     def _init_emotion_filter_combo(self):
@@ -400,20 +409,6 @@ class CharacterTabWidget(QWidget):
         self.ui.combo_emotion_select.currentIndexChanged.connect(self.on_emotion_changed)
         self.ui.combo_emotion_filter.currentIndexChanged.connect(self.on_emotion_filter_changed)
     
-    def _update_namebox_config(self, character_name):
-        """更新namebox组件的文本配置"""
-        # 找到namebox组件并更新
-        if not CONFIGS.preview_style or 'image_components' not in CONFIGS.preview_style:
-            return
-            
-        for component in CONFIGS.preview_style['image_components']:
-            if component.get("type") == "namebox" and component.get("enabled", True):
-                if character_name in CONFIGS.text_configs_dict:
-                    component["textcfg"] = CONFIGS.text_configs_dict[character_name]
-                    component["font_name"] = "font3"
-                    print(f"已更新namebox配置为角色: {character_name}")
-                break
-    
     def on_character_changed(self, index):
         """角色改变事件"""
         if index < 0 or self._ignore_signals:
@@ -435,9 +430,6 @@ class CharacterTabWidget(QWidget):
             if self.layer_index == 1 or not self.get_component_config().get("use_fixed_character", False):
                 CONFIGS.current_character = char_id
             
-            # 更新namebox配置
-            self._update_namebox_config(char_id)
-            
             # 更新表情下拉框
             self._init_emotion_combo()
             
@@ -446,9 +438,7 @@ class CharacterTabWidget(QWidget):
     
     def on_emotion_random_changed(self, checked):
         """表情随机选择改变"""
-        if self._ignore_signals:
-            return
-            
+
         # 设置表情选择框的启用状态
         self.ui.combo_emotion_select.setEnabled(not checked)
         
@@ -468,7 +458,8 @@ class CharacterTabWidget(QWidget):
         
         # 更新预览样式
         CONFIGS.update_preview_component(self.layer_index, updates)
-        
+        if self._ignore_signals:
+            return
         # 发出配置改变信号
         self.config_changed.emit()
 

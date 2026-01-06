@@ -1,23 +1,18 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'Manosaba TextBoxiFGdEo.ui'
+## Form generated from reading UI file 'Manosaba TextBoxkBVwst.ui'
 ##
 ## Created by: Qt User Interface Compiler version 6.10.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
 
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
+from PySide6.QtCore import (QCoreApplication, QMetaObject, QRect, QSize, Qt)
+from PySide6.QtGui import (QFont)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QFrame,
     QGraphicsView, QGridLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QMainWindow, QPushButton,
+    QLabel, QLineEdit, QPushButton,
     QScrollArea, QSizePolicy, QSpacerItem, QStatusBar,
     QTabWidget, QVBoxLayout, QWidget)
 
@@ -37,13 +32,41 @@ class Ui_MainWindow(object):
         self.horizontalLayout_2.setSpacing(0)
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.menu_setting = QPushButton(self.widget)
-        self.menu_setting.setObjectName(u"menu_setting")
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.frame = QFrame(self.widget)
+        self.frame.setObjectName(u"frame")
+        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.menu_setting.sizePolicy().hasHeightForWidth())
-        self.menu_setting.setSizePolicy(sizePolicy)
+        sizePolicy.setHeightForWidth(self.frame.sizePolicy().hasHeightForWidth())
+        self.frame.setSizePolicy(sizePolicy)
+        self.frame.setMinimumSize(QSize(90, 0))
+        self.frame.setFrameShape(QFrame.Shape.Panel)
+        self.frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_3 = QVBoxLayout(self.frame)
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.verticalLayout_3.setContentsMargins(-1, 7, -1, 0)
+        self.label = QLabel(self.frame)
+        self.label.setObjectName(u"label")
+        font = QFont()
+        font.setFamilies([u"Stencil Std"])
+        font.setPointSize(12)
+        font.setBold(True)
+        self.label.setFont(font)
+        self.label.setText(u"Ciallo")
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.verticalLayout_3.addWidget(self.label)
+
+
+        self.horizontalLayout_2.addWidget(self.frame)
+
+        self.menu_setting = QPushButton(self.widget)
+        self.menu_setting.setObjectName(u"menu_setting")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.menu_setting.sizePolicy().hasHeightForWidth())
+        self.menu_setting.setSizePolicy(sizePolicy1)
         self.menu_setting.setMinimumSize(QSize(0, 30))
         self.menu_setting.setStyleSheet(u"QPushButton {\n"
 "    background-color: #2b2b2b;\n"
@@ -81,8 +104,8 @@ class Ui_MainWindow(object):
 
         self.menu_style = QPushButton(self.widget)
         self.menu_style.setObjectName(u"menu_style")
-        sizePolicy.setHeightForWidth(self.menu_style.sizePolicy().hasHeightForWidth())
-        self.menu_style.setSizePolicy(sizePolicy)
+        sizePolicy1.setHeightForWidth(self.menu_style.sizePolicy().hasHeightForWidth())
+        self.menu_style.setSizePolicy(sizePolicy1)
         self.menu_style.setMinimumSize(QSize(0, 30))
         self.menu_style.setStyleSheet(u"QPushButton {\n"
 "    background-color: #2b2b2b;\n"
@@ -120,9 +143,10 @@ class Ui_MainWindow(object):
 
         self.menu_about = QPushButton(self.widget)
         self.menu_about.setObjectName(u"menu_about")
-        sizePolicy.setHeightForWidth(self.menu_about.sizePolicy().hasHeightForWidth())
-        self.menu_about.setSizePolicy(sizePolicy)
+        sizePolicy1.setHeightForWidth(self.menu_about.sizePolicy().hasHeightForWidth())
+        self.menu_about.setSizePolicy(sizePolicy1)
         self.menu_about.setMinimumSize(QSize(0, 30))
+        self.menu_about.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.menu_about.setStyleSheet(u"QPushButton {\n"
 "    background-color: #2b2b2b;\n"
 "    border: 1px solid #3a3a3a;\n"
@@ -154,6 +178,7 @@ class Ui_MainWindow(object):
 "    border: 1px solid #2a2a2a;\n"
 "    color: #5a5a5a;\n"
 "}")
+        self.menu_about.setFlat(False)
 
         self.horizontalLayout_2.addWidget(self.menu_about)
 
@@ -166,11 +191,11 @@ class Ui_MainWindow(object):
 
         self.frame_Cfg = QFrame(self.centralwidget)
         self.frame_Cfg.setObjectName(u"frame_Cfg")
-        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        sizePolicy1.setHorizontalStretch(0)
-        sizePolicy1.setVerticalStretch(0)
-        sizePolicy1.setHeightForWidth(self.frame_Cfg.sizePolicy().hasHeightForWidth())
-        self.frame_Cfg.setSizePolicy(sizePolicy1)
+        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        sizePolicy2.setHorizontalStretch(0)
+        sizePolicy2.setVerticalStretch(0)
+        sizePolicy2.setHeightForWidth(self.frame_Cfg.sizePolicy().hasHeightForWidth())
+        self.frame_Cfg.setSizePolicy(sizePolicy2)
         self.frame_Cfg.setFrameShape(QFrame.Shape.WinPanel)
         self.frame_Cfg.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout = QHBoxLayout(self.frame_Cfg)
@@ -178,6 +203,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName(u"horizontalLayout")
         self.label_StyleSelect = QLabel(self.frame_Cfg)
         self.label_StyleSelect.setObjectName(u"label_StyleSelect")
+        self.label_StyleSelect.setMinimumSize(QSize(65, 0))
         self.label_StyleSelect.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout.addWidget(self.label_StyleSelect)
@@ -208,11 +234,11 @@ class Ui_MainWindow(object):
 
         self.tabWidget_Layer = QTabWidget(self.centralwidget)
         self.tabWidget_Layer.setObjectName(u"tabWidget_Layer")
-        sizePolicy2 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy2.setHorizontalStretch(0)
-        sizePolicy2.setVerticalStretch(0)
-        sizePolicy2.setHeightForWidth(self.tabWidget_Layer.sizePolicy().hasHeightForWidth())
-        self.tabWidget_Layer.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.tabWidget_Layer.sizePolicy().hasHeightForWidth())
+        self.tabWidget_Layer.setSizePolicy(sizePolicy3)
         self.tabWidget_Layer.setMinimumSize(QSize(0, 200))
         self.tab_bg1 = QWidget()
         self.tab_bg1.setObjectName(u"tab_bg1")
@@ -237,11 +263,8 @@ class Ui_MainWindow(object):
 
         self.label_bgColor = QLabel(self.groupBox_BgLayerCfg)
         self.label_bgColor.setObjectName(u"label_bgColor")
-        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        sizePolicy3.setHorizontalStretch(0)
-        sizePolicy3.setVerticalStretch(0)
-        sizePolicy3.setHeightForWidth(self.label_bgColor.sizePolicy().hasHeightForWidth())
-        self.label_bgColor.setSizePolicy(sizePolicy3)
+        sizePolicy.setHeightForWidth(self.label_bgColor.sizePolicy().hasHeightForWidth())
+        self.label_bgColor.setSizePolicy(sizePolicy)
         self.label_bgColor.setMinimumSize(QSize(90, 0))
         self.label_bgColor.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.label_bgColor.setMargin(0)
@@ -250,8 +273,8 @@ class Ui_MainWindow(object):
 
         self.widget_bgColorPreview = QWidget(self.groupBox_BgLayerCfg)
         self.widget_bgColorPreview.setObjectName(u"widget_bgColorPreview")
-        sizePolicy.setHeightForWidth(self.widget_bgColorPreview.sizePolicy().hasHeightForWidth())
-        self.widget_bgColorPreview.setSizePolicy(sizePolicy)
+        sizePolicy1.setHeightForWidth(self.widget_bgColorPreview.sizePolicy().hasHeightForWidth())
+        self.widget_bgColorPreview.setSizePolicy(sizePolicy1)
         self.widget_bgColorPreview.setMinimumSize(QSize(30, 30))
 
         self.gridLayout.addWidget(self.widget_bgColorPreview, 4, 5, 1, 1)
@@ -322,8 +345,8 @@ class Ui_MainWindow(object):
 
         self.Button_RefreshPreview = QPushButton(self.widget_PreviewInfo)
         self.Button_RefreshPreview.setObjectName(u"Button_RefreshPreview")
-        sizePolicy.setHeightForWidth(self.Button_RefreshPreview.sizePolicy().hasHeightForWidth())
-        self.Button_RefreshPreview.setSizePolicy(sizePolicy)
+        sizePolicy1.setHeightForWidth(self.Button_RefreshPreview.sizePolicy().hasHeightForWidth())
+        self.Button_RefreshPreview.setSizePolicy(sizePolicy1)
         self.Button_RefreshPreview.setMinimumSize(QSize(0, 25))
         self.Button_RefreshPreview.setIconSize(QSize(16, 16))
 

@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
 """PyQt样式编辑窗口模块 - 简化版本"""
 
-from PySide6.QtCore import Qt, Slot, Signal
-from PySide6.QtWidgets import (QDialog, QMessageBox, QVBoxLayout, QHBoxLayout, 
-                               QLabel, QPushButton, QTabWidget, QWidget, 
-                               QScrollArea, QFrame, QGroupBox, QComboBox,
-                               QLineEdit, QRadioButton, QCheckBox, QSpinBox,
-                               QColorDialog, QGridLayout, QToolButton, QMenu,
-                               QSizePolicy, QDialogButtonBox, QApplication)
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt, Slot, Signal, QMetaObject
+from PySide6.QtWidgets import (QDialog, QMessageBox, QVBoxLayout, QGroupBox, QMenu)
 from ui_pyqt_components import (
     CharacterComponent, BackgroundComponent, 
     ImageComponent, NameboxComponent,
@@ -624,6 +618,8 @@ class StyleWindow(QDialog):
     """样式编辑窗口"""
     
     config_changed = Signal()
+    style_changed = Signal(str)  # 样式改变信号
+    style_saved = Signal(str)    # 样式保存信号
     
     def __init__(self, parent=None, core=None, gui=None, current_style=None):
         super().__init__(parent)
@@ -631,9 +627,12 @@ class StyleWindow(QDialog):
         self.core = core
         self.gui = gui
         self.initial_style = current_style  # 记录打开时的样式
-
+        
         # 组件编辑器列表
         self.component_editors = []
+        
+        # 跟踪组件数量是否变化
+        self.original_component_count = 0
         
         self.setup_ui()
     
@@ -672,6 +671,8 @@ class StyleWindow(QDialog):
         
         # 初始化组件编辑区域
         self.init_component_editors()
+        # 记录初始组件数量
+        self.original_component_count = len(self.component_editors)
         
         # 连接组件添加按钮
         self.ui.toolButton.clicked.connect(self.show_add_component_menu)
@@ -718,8 +719,8 @@ class StyleWindow(QDialog):
         """根据当前角色的文本颜色更新强调色"""
         from config import CONFIGS
         character_name = CONFIGS.current_character
-        if character_name in CONFIGS.text_configs_dict and CONFIGS.text_configs_dict[character_name]:
-            first_config = CONFIGS.text_configs_dict[character_name][0]
+        if character_name in CONFIGS.character_list and CONFIGS.mahoshojo[character_name]["text"]:
+            first_config = CONFIGS.mahoshojo[character_name]["text"][0]
             font_color = first_config.get("font_color", (255, 255, 255))
             color_hex = f"#{font_color[0]:02x}{font_color[1]:02x}{font_color[2]:02x}"
             self.ui.lineEdit_bracketColor.setText(color_hex)
@@ -771,7 +772,7 @@ class StyleWindow(QDialog):
         
         pos = self.ui.toolButton.mapToGlobal(self.ui.toolButton.rect().bottomLeft())
         menu.exec(pos)
-        
+
     def add_component(self, component_type):
         """添加新组件"""
         # 计算新的图层值（应该是最高的图层号+1）
@@ -800,6 +801,8 @@ class StyleWindow(QDialog):
         
         # 重新构建UI顺序（这会按照self.component_editors的顺序重新排列）
         self.update_component_order()
+
+        self._components_changed = True
         
     def remove_component(self, index):
         """删除组件"""
@@ -812,6 +815,9 @@ class StyleWindow(QDialog):
                 ed.index = i
                 
             self.update_component_order()
+            
+            # 标记组件数量已变化
+            self._components_changed = True
     
     def move_component(self, index, direction):
         """移动组件位置"""
@@ -835,6 +841,9 @@ class StyleWindow(QDialog):
             
             # 更新UI顺序
             self.update_component_order()
+
+            # 标记组件已重新排序
+            self._components_reordered = True
     
     def update_component_order(self):
         """更新组件在UI中的顺序"""
@@ -1012,7 +1021,8 @@ class StyleWindow(QDialog):
         
         # 强调色 - 全部保存
         style_data["use_character_color"] = self.ui.checkBox_useCharaColor.isChecked()
-        style_data["bracket_color"] = self.ui.lineEdit_bracketColor.text()
+        if not style_data["use_character_color"]:
+            style_data["bracket_color"] = self.ui.lineEdit_bracketColor.text()
         
         # 粘贴图像设置 - 全部保存
         paste_settings = {}
@@ -1135,12 +1145,13 @@ class StyleWindow(QDialog):
         
         print(f"切换到样式: {style_name}")
         
-        clear_cache()
         CONFIGS.apply_style(style_name)
         self.load_style_data()
         self.init_component_editors()
         
+        # 发送样式改变信号到主窗口
         if self.gui:
+            self.style_changed.emit(style_name)
             self.gui.update_preview()
             self.gui.update_status(f"已切换到样式: {style_name}")
     
@@ -1168,12 +1179,75 @@ class StyleWindow(QDialog):
             QMessageBox.critical(self, "错误", "\n".join(errors))
             return False
         
-        # 更新样式配置
+        # 检查是否需要重新初始化主窗口的标签页
+        needs_reinit = False
+        
+        # 检查组件数量是否变化
+        current_count = len(self.collect_components())
+        if current_count != self.original_component_count:
+            needs_reinit = True
+            print(f"组件数量变化: {self.original_component_count} -> {current_count}")
+        
+        # 检查是否有角色或背景组件被添加/删除
+        if not needs_reinit:
+            current_components = self.collect_components()
+            original_style = CONFIGS.style_configs.get(style_name, {})
+            original_components = original_style.get("image_components", [])
+            
+            # 检查角色组件
+            current_chars = [c for c in current_components if c.get("type") == "character"]
+            original_chars = [c for c in original_components if c.get("type") == "character"]
+            if len(current_chars) != len(original_chars):
+                needs_reinit = True
+            
+            # 检查背景组件
+            current_bgs = [c for c in current_components if c.get("type") == "background"]
+            original_bgs = [c for c in original_components if c.get("type") == "background"]
+            if len(current_bgs) != len(original_bgs):
+                needs_reinit = True
+        
+        # 更新样式配置，直接依赖 update_style 的返回值
         success = CONFIGS.update_style(style_name, style_data)
         
         if success:
             if self.gui:
                 clear_cache()
-                self.gui.update_status(f"样式已保存: {style_name}")
-                self.gui.update_preview()
+                self.style_saved.emit(style_name)
+                
+                # 如果需要重新初始化，更新预览
+                if needs_reinit:
+                    self.gui.update_status(f"样式已保存: {style_name} (组件已更新)")
+                else:
+                    self.gui.update_status(f"样式已保存: {style_name}")
+                    self.gui.update_preview()
         return True
+    
+    def closeEvent(self, event):
+        """窗口关闭事件"""
+        # 如果样式有改变但未保存，提示用户
+        style_name = self.ui.comboBox_style.currentText()
+        style_data = self.collect_style_data()
+        original_data = CONFIGS.style_configs.get(style_name, {})
+        
+        # 简单比较
+        if style_data != original_data:
+            reply = QMessageBox.question(
+                self, "确认关闭",
+                "样式已修改但未保存，确定要关闭吗？",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            
+            if reply == QMessageBox.StandardButton.No:
+                event.ignore()
+                return
+        
+        # 通知主窗口恢复控件
+        if self.gui:
+            try:
+                QMetaObject.invokeMethod(self.gui, "_closed_style_window_force", 
+                                        Qt.ConnectionType.QueuedConnection)
+            except Exception as e:
+                print(f"恢复主窗口控件时出错: {e}")
+        
+        # 接受关闭事件
+        event.accept()

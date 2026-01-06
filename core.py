@@ -2,10 +2,9 @@
 from config import CONFIGS
 from clipboard_utils import ClipboardManager
 from sentiment_analyzer import SentimentAnalyzer
-from image_processor import get_enhanced_loader, generate_image_with_dll, set_dll_global_config, clear_cache, update_style_config, update_dll_gui_settings, draw_content_auto
+from image_processor import get_enhanced_loader, generate_image_with_dll, set_dll_global_config, clear_cache, update_dll_gui_settings, draw_content_auto
 
 import time
-import copy
 import random
 import psutil
 import threading
@@ -44,10 +43,6 @@ class ManosabaCore:
         self.kbd_controller = Controller()
         self.clipboard_manager = ClipboardManager()
         
-        # 预览图当前的索引
-        self._preview_emotion_cache = {}  # {layer: emotion_index}
-        self._preview_background_cache = {}  # {layer: background_index}
-        
         # 状态更新回调
         self.status_callback = None
         self.gui_callback = None
@@ -61,16 +56,8 @@ class ManosabaCore:
         }
         
         # 初始化DLL加载器
-        self._dll_loader = get_enhanced_loader()
         self._assets_path = CONFIGS.config.ASSETS_PATH
-        
-        # 设置DLL全局配置
-        set_dll_global_config(
-            self._assets_path,
-            min_image_ratio=0.2
-        )
-        
-        # 更新DLL GUI设置
+        set_dll_global_config(self._assets_path, min_image_ratio=0.2)
         update_dll_gui_settings(CONFIGS.gui_settings)
     
     def set_gui_callback(self, callback):
@@ -242,7 +229,6 @@ class ManosabaCore:
         
         updated = False
         current_character = CONFIGS.get_character()
-        character_meta = CONFIGS.mahoshojo.get(current_character, {})
         
         # 获取所有角色图层
         preview_components = CONFIGS.get_sorted_preview_components()
@@ -254,18 +240,37 @@ class ManosabaCore:
             if component.get("type") == "character":
                 character_name = component.get("character_name", current_character)
                 
-                # 为每个角色查找对应情感的表情
+                # 获取当前角色的表情筛选设置
+                filter_name = component.get("emotion_filter", "全部")
+                
+                # 获取筛选后的表情列表
+                filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
+                
+                if not filtered_emotions:
+                    return False
+                
+                # 从角色配置中获取该情感对应的表情索引
                 emotion_indices = CONFIGS.mahoshojo.get(character_name, {}).get(sentiment, [])
-                if emotion_indices:
-                    # 随机选择一个表情
-                    emotion_index = random.choice(emotion_indices)
+                
+                # 筛选出在过滤范围内的情感表情
+                available_emotions = [idx for idx in emotion_indices if idx in filtered_emotions]
+                
+                if available_emotions:
+                    # 随机选择一个在筛选范围内的表情
+                    emotion_index = random.choice(available_emotions)
                     
                     # 更新组件的表情索引
                     component["emotion_index"] = emotion_index
+                    component["force_use"] = True
                     updated = True
                     
-                    self.update_status(f"角色 {character_name} 表情更新为: {emotion_index}")
-        
+                    # 获取角色全名用于显示
+                    char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
+                    info = f"角色 {char_full_name} 表情({sentiment}): {emotion_index} |"
+                    self.base_msg += info
+                    print(info)
+        if updated:
+            clear_cache()
         return updated
 
     def _active_process_allowed(self) -> bool:
@@ -357,14 +362,26 @@ class ManosabaCore:
 
                 if comp_type == "namebox":
                     # 添加角色文本配置
-                    if current_character_name in CONFIGS.text_configs_dict:
-                        component["textcfg"] = CONFIGS.text_configs_dict[current_character_name]
+                    if current_character_name in CONFIGS.mahoshojo:
+                        component["textcfg"] = CONFIGS.mahoshojo[current_character_name]["text"]
                         component["font_name"] = "font3"  # 使用默认字体
                 elif comp_type == "character":
                     character_name = component.get("character_name", current_character_name)
                     emotion_index = component.get("emotion_index")
                     
-                    if component.get("use_fixed_character", False):
+                    # 检查是否有强制使用标记
+                    force_use = component.get("force_use", False)
+                    if force_use and emotion_index is not None:
+                        emotion_index = int(emotion_index)
+                        component.pop("force_use", None)
+                        
+                        # 收集角色信息
+                        char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
+                        character_info = f"角色: {char_full_name}, 表情: {emotion_index}(强制)"
+                        
+                        # 更新组件的emotion_index
+                        component["emotion_index"] = emotion_index
+                    elif component.get("use_fixed_character", False):
                         # 使用固定表情
                         
                         if emotion_index is None:
@@ -436,20 +453,15 @@ class ManosabaCore:
                     component["offset_y1"] = offset_y
                     
                 elif comp_type == "background":
-                    if component.get("use_fixed_background", False):
+                    overlay = component.get("overlay", "")
+                    if component.get("use_fixed_background", False) and overlay:
                         # 使用固定背景 - 颜色或图片
-                        overlay = component.get("overlay", "")
                         print(f"背景组件 - 固定背景overlay: {overlay}")
                         if overlay.startswith("#"):
                             # 颜色背景
                             background_info = f"背景: 纯色({overlay})"
                             # 确保组件包含颜色信息
                             component["color"] = overlay
-                        elif overlay == "":
-                            # 空背景（透明）
-                            background_info = "背景: 透明"
-                            # 确保overlay是空字符串
-                            component["overlay"] = ""
                         else:
                             # 图片背景
                             background_info = f"背景: 图片({overlay})"
@@ -476,14 +488,7 @@ class ManosabaCore:
                 character_info = "角色: 无"
             
             # 使用DLL生成图像
-            preview_image = generate_image_with_dll(
-                self._assets_path,
-                _calculate_canvas_size(),
-                cp_components,
-                current_character_name,  # 传递当前角色名
-                1,                       # 传递默认表情索引
-                1                        # 传递默认背景索引
-            )
+            preview_image = generate_image_with_dll(_calculate_canvas_size(), cp_components,)
             
             get_enhanced_loader().layer_cache = True
 
@@ -499,7 +504,7 @@ class ManosabaCore:
             print(f"预览图生成出错: {e}")
             import traceback
             traceback.print_exc()
-            preview_image = Image.new("RGBA", _calculate_canvas_size(), color=(0, 0, 0, 0))
+            preview_image, info = self._create_empty_preview()
             info = f"错误: {str(e)}"
         
         return preview_image, info
@@ -516,7 +521,7 @@ class ManosabaCore:
         if not self._active_process_allowed():
             return "前台应用不在白名单内"
 
-        base_msg=""
+        self.base_msg=""
 
         # 开始计时
         start_time = time.time()
@@ -532,7 +537,7 @@ class ManosabaCore:
         cut_mode = cut_settings.get("cut_mode", "full")
         
         # 根据剪切模式执行不同的剪切操作
-        if cut_mode == "直接剪切":
+        if cut_mode == "direct":
             # 手动剪切模式：不执行任何剪切操作，等待用户自行剪切
             self.kbd_controller.press(Key.ctrl)
             self.kbd_controller.press('x')
@@ -540,9 +545,8 @@ class ManosabaCore:
             self.kbd_controller.release(Key.ctrl)
         else:
             # 执行剪切操作
-            if cut_mode == "单行剪切":
+            if cut_mode == "single_line":
                 # 单行剪切模式：模拟 Shift+Home 选择当前行
-                self.update_status("单行剪切模式：剪切当前行...")
                 if platform.startswith("win"):
                     self.kbd_controller.press(Key.end)
                     self.kbd_controller.release(Key.end)
@@ -567,7 +571,6 @@ class ManosabaCore:
                     self.kbd_controller.release(Key.cmd)
             else:
                 # 全选剪切模式（默认）
-                self.update_status("全选剪切模式：剪切全部内容...")
                 if platform.startswith("win"):
                     self.kbd_controller.press(Key.ctrl)
                     self.kbd_controller.press('a')
@@ -591,8 +594,6 @@ class ManosabaCore:
                 print(f"[{int((time.time()-start_time)*1000)}] 剪切板内容获取完成")
                 break
             time.sleep(0.005)
-            
-        print("读取到图片" if image is not None else "", "读取到文本" if text.strip() else "")
         
         # 情感匹配处理
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
@@ -601,51 +602,22 @@ class ManosabaCore:
             self.sentiment_analyzer_status['initialized'] and
             text.strip()):
             
-            self.update_status("正在分析文本情感...")
             emotion_updated = self._update_emotion_by_sentiment(text)
             
             if emotion_updated:
-                self.update_status("情感分析完成，更新多个角色表情")
                 print(f"[{int((time.time()-start_time)*1000)}] 情感分析完成")
                 # 刷新预览以显示新的表情
-                base_msg = "情感匹配完成  "
                 self.generate_preview()
             else:
-                self.update_status("情感分析失败，使用默认表情")
                 print(f"[{int((time.time()-start_time)*1000)}] 情感分析失败")
 
         if text == "" and image is None:
             return "错误: 没有文本或图像"
 
         try:
-            # 获取粘贴图像设置
-            paste_settings = CONFIGS.style.paste_image_settings
-            enabled = paste_settings.get("enabled", "off")
-            
-            # 初始化区域变量
-            text_region = (
-                CONFIGS.style.textbox_x,
-                CONFIGS.style.textbox_y,
-                CONFIGS.style.textbox_x + CONFIGS.style.textbox_width,
-                CONFIGS.style.textbox_y + CONFIGS.style.textbox_height
-            )
-            
-            # 根据粘贴模式决定图片区域
-            image_region = None
-            if enabled == "always":
-                image_region = (
-                    paste_settings.get("x", 0),
-                    paste_settings.get("y", 0),
-                    paste_settings.get("x", 0) + paste_settings.get("width", 300),
-                    paste_settings.get("y", 0) + paste_settings.get("height", 200)
-                )
-            
             print(f"[{int((time.time()-start_time)*1000)}] 开始图像合成")
             
-            bmp_bytes = draw_content_auto(
-                text=text,
-                content_image=image,
-            )
+            bmp_bytes = draw_content_auto(text=text,content_image=image,)
 
             print(f"[{int((time.time()-start_time)*1000)}] 图片合成完成")
 
@@ -679,13 +651,13 @@ class ManosabaCore:
             if not self._active_process_allowed():
                 return "前台应用不在白名单内"
             if CONFIGS.config.AUTO_SEND_IMAGE:
-                time.sleep(0.2)
+                time.sleep(0.4)
                 self.kbd_controller.press(Key.enter)
                 self.kbd_controller.release(Key.enter)
 
                 print(f"[{int((time.time()-start_time)*1000)}] 自动发送完成")
         
         # 构建状态消息
-        base_msg += f"角色: {CONFIGS.get_character()}, 表情: {self._preview_emotion}, 背景: {self._preview_background}, 用时: {int((time.time() - start_time) * 1000)}ms"
+        self.base_msg += f"角色: {CONFIGS.get_character()}, 用时: {int((time.time() - start_time) * 1000)}ms"
         
-        return base_msg
+        return self.base_msg

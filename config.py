@@ -73,10 +73,9 @@ class ConfigLoader:
 
         # 配置加载
         self.mahoshojo = self.load_config("chara_meta")
-        self.text_configs_dict = self.load_config("text_configs")
         self.character_list = list(self.mahoshojo.keys())
         
-        self.current_character = self._get_current_character_from_layers()
+        self.current_character = None
         self.keymap = self.load_config("keymap")
         self.process_whitelist = self.load_config("process_whitelist")
         self.gui_settings = self.load_config("settings")
@@ -140,13 +139,6 @@ class ConfigLoader:
                 return True
         return False
 
-    # 添加获取预览样式属性的方法
-    def get_preview_style_value(self, key: str, default=None):
-        """获取预览样式的值"""
-        if self.preview_style:
-            return self.preview_style.get(key, default)
-        return default
-
     # 添加更新预览样式的方法
     def update_preview_style(self, updates: Dict[str, Any]):
         """更新预览样式"""
@@ -196,32 +188,6 @@ class ConfigLoader:
             return filter_options[filter_name]
         else:
             return []
-
-    def switch_character_by_index(self, index: int) -> bool:
-        """通过索引切换角色（主要用于热键或快速切换）"""
-        if 0 < index <= len(self.character_list):
-            character_name = self.character_list[index - 1]
-            
-            # 更新第一个非固定角色的图层
-            if self.preview_style and 'image_components' in self.preview_style:
-                for component in self.preview_style['image_components']:
-                    if component.get("type") == "character" and not component.get("use_fixed_character", False):
-                        component["character_name"] = character_name
-                        self.current_character = character_name
-                        return True
-                
-                # 如果没有非固定角色图层，更新第一个角色图层
-                for component in self.preview_style['image_components']:
-                    if component.get("type") == "character":
-                        component["character_name"] = character_name
-                        component["use_fixed_character"] = True
-                        self.current_character = character_name
-                        return True
-            
-            # 如果没有角色图层，直接更新当前角色
-            self.current_character = character_name
-            return True
-        return False
     
     def apply_style(self, style_name: str):
         """应用指定的样式配置"""
@@ -237,15 +203,14 @@ class ConfigLoader:
                 if hasattr(self.style, key):
                     setattr(self.style, key, value)
             
-            # 如果使用角色颜色作为强调色，更新强调色
-            if self.style.use_character_color:
-                self._update_bracket_color_from_character()
-            
             # 更新预览样式
             self._init_preview_style()
             
             # 更新当前角色
             self.current_character = self._get_current_character_from_layers()
+            
+            # 如果使用角色颜色作为强调色，更新强调色
+            self.update_bracket_color_from_character()
 
             # 保存上次选择的样式到GUI设置
             update_style_config(self.style)
@@ -286,15 +251,21 @@ class ConfigLoader:
         # 应用当前样式
         self.apply_style(self.current_style)
     
-    def _update_bracket_color_from_character(self):
+    def update_bracket_color_from_character(self):
         """根据当前角色的文本颜色更新强调色"""
+        if not self.style.use_character_color:
+            return
+        
         character_name = self.get_character()
-        if character_name in self.text_configs_dict and self.text_configs_dict[character_name]:
+        print("当前角色：", character_name)  # 调试输出
+        if character_name in self.mahoshojo and self.mahoshojo[character_name]["text"]:
             # 获取第一个文本配置的颜色
-            first_config = self.text_configs_dict[character_name][0]
+            first_config = self.mahoshojo[character_name]["text"][0]
             font_color = first_config.get("font_color", (255, 255, 255))
             # 将RGB转换为十六进制
             self.style.bracket_color = f"#{font_color[0]:02x}{font_color[1]:02x}{font_color[2]:02x}"
+            #单独更新括号颜色
+            update_style_config(self.style)
 
     def _get_background_list(self) -> list:
         """获取背景文件列表（移除c开头的限制）"""
@@ -315,29 +286,20 @@ class ConfigLoader:
         except Exception as e:
             print(f"获取背景文件列表失败: {e}")
             return []
-    
-    def reload_configs(self):
-        """重新加载配置（用于热键更新后）"""
-        # 重新加载快捷键映射
-        self.keymap = self.load_config("keymap")
-        # 重新加载进程白名单
-        self.process_whitelist = self.load_config("process_whitelist")
-        # 重新加载GUI设置
-        self.gui_settings = self.load_config("settings")
 
     def load_config(self, config_type: str, *args) -> Any:
         """
         通用配置加载函数
         
         Args:
-            config_type: 配置类型，支持: 'chara_meta', 'text_configs', 
+            config_type: 配置类型，支持: 'chara_meta', 
                         'keymap', 'process_whitelist', 'settings'
             *args: 额外参数，如平台类型或配置键名
         
         Returns:
             配置数据
         """
-        config_list = ["chara_meta", "text_configs", "keymap", "process_whitelist", "settings"]
+        config_list = ["chara_meta", "keymap", "process_whitelist", "settings"]
         if config_type not in config_list:
             raise ValueError(f"不支持的配置类型: {config_type}")
         
@@ -585,25 +547,16 @@ class ConfigLoader:
         """获取程序信息"""
         program_info = self.version_info["program"]
         return {
-            "name": program_info["name"],
             "version": self.version,
             "author": program_info["author"],
             "description": program_info["description"],
             "github": program_info["github"],
-            "origin_project": program_info["origin_project"]
         }
-    
-    def get_contact_info(self) -> Dict[str, str]:
-        """获取联系信息"""
-        return self.version_info.get("contact", {})
-    
+
     def get_version_history(self) -> list:
         """获取版本历史"""
         return self.version_info.get("history", [])
     
-    def get_sorted_image_components(self):
-        """获取排序后的图片组件列表（按图层顺序）"""
-        return sorted(self.style.image_components, key=lambda x: x.get("layer", 0))
     
 class AppConfig:
     """应用配置类"""

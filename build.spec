@@ -23,19 +23,27 @@ def collect_files(pattern, dest_folder='.'):
 # 收集所有资源文件
 datas = []
 
-# 添加核心Python文件 - 不包含tui.py
+# 添加核心Python文件 - 更新为PyQt版本的文件
 core_files = [
-    'main.py',
+    'gui.py',
     'core.py',
-    'gui.py', 
     'config.py',
     'clipboard_utils.py',
     'sentiment_analyzer.py',
-    'gui_components.py',
-    'gui_hotkeys.py',
-    'gui_settings.py',
+    'pyqt_tabs.py',
+    'pyqt_hotkeys.py',
+    'pyqt_setting.py',
+    'pyqt_style.py',
+    'pyqt_about.py',
     'path_utils.py',
-    'image_loader.py'
+    'image_processor.py',
+    'update_checker.py',
+
+    'ui_pyqt_main.py',
+    'ui_pyqt_components.py',
+    'ui_pyqt_setting.py',
+    'ui_pyqt_style.py',
+    'ui_pyqt_about.py'
 ]
 
 for file in core_files:
@@ -71,14 +79,22 @@ excludes = [
     'bz2',
     'lzma',
     'sqlite3',
+    'tkinter',
     'tkinter.test',
     'tkinter.ttk.test',
     'PIL.ImageFilter',
     'PIL.ImageEnhance',
 ]
 
+# 添加PySide6相关的隐藏导入
+hiddenimports = [
+    'PySide6.QtCore',
+    'PySide6.QtGui', 
+    'PySide6.QtWidgets'
+]
+
 a = Analysis(
-    ['main.py'],
+    ['gui.py'],  # 修改入口文件为gui.py
     pathex=[os.getcwd()],
     binaries=[
         ('Image_Processor.dll', '.'),
@@ -89,7 +105,7 @@ a = Analysis(
         ('libwebp-7.dll', '.'),
     ],
     datas=datas,
-    hiddenimports=[],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

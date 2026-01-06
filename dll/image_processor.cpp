@@ -201,7 +201,6 @@ struct StyleConfig {
   int textbox_width = 1579;
   int textbox_x = 470;
   int textbox_y = 1080;
-  bool use_character_color = true;
 };
 
 // ==================== 通用工具函数 ====================
@@ -588,11 +587,6 @@ public:
       style_config_.textbox_y = textbox_y->valueint;
     }
 
-    cJSON *use_character_color = cJSON_GetObjectItem(json_root, "use_character_color");
-    if (use_character_color) {
-      style_config_.use_character_color = cJSON_IsTrue(use_character_color);
-    }
-
     cJSON_Delete(json_root);
 
     DEBUG_PRINT("Style configuration updated: font=%s, size=%d", style_config_.font_family, style_config_.font_size);
@@ -714,7 +708,7 @@ public:
     }
   }
 
-  LoadResult GeneratePreviewImage(const char *assets_path, int canvas_width, int canvas_height, const char *components_json, const char *character_name, int emotion_index, int background_index, unsigned char **out_data, int *out_width, int *out_height) {
+  LoadResult GeneratePreviewImage(int canvas_width, int canvas_height, const char *components_json, unsigned char **out_data, int *out_width, int *out_height) {
     TIME_SCOPE("Starting to generate preview image");
 
     if (!InitSDL()) {
@@ -804,9 +798,9 @@ public:
       // Draw component based on type
       bool draw_success = false;
       if (type == "background") {
-        draw_success = DrawBackgroundComponent(canvas, current_static_segment, comp_obj, background_index);
+        draw_success = DrawBackgroundComponent(canvas, current_static_segment, comp_obj);
       } else if (type == "character") {
-        draw_success = DrawCharacterComponent(canvas, current_static_segment, comp_obj, character_name, emotion_index);
+        draw_success = DrawCharacterComponent(canvas, current_static_segment, comp_obj);
       } else if (type == "namebox") {
         draw_success = DrawNameboxComponent(canvas, current_static_segment, comp_obj);
       } else if (type == "text") {
@@ -1444,7 +1438,7 @@ private:
   }
 
   // 背景组件绘制
-  bool DrawBackgroundComponent(SDL_Surface *target1, SDL_Surface *target2, cJSON *comp_obj, int background_index) {
+  bool DrawBackgroundComponent(SDL_Surface *target1, SDL_Surface *target2, cJSON *comp_obj) {
     const char *overlay = GetJsonString(comp_obj, "overlay", "");
 
     DEBUG_PRINT("draw background, overlay: %s", overlay ? overlay : "null");
@@ -1516,9 +1510,9 @@ private:
   }
 
   // 角色组件绘制
-  bool DrawCharacterComponent(SDL_Surface *target1, SDL_Surface *target2, cJSON *comp_obj, const char *character_name, int emotion_index) {
-    const char *draw_char_name = character_name;
-    int draw_emotion = emotion_index;
+  bool DrawCharacterComponent(SDL_Surface *target1, SDL_Surface *target2, cJSON *comp_obj) {
+    const char *draw_char_name = "hiro";
+    int draw_emotion = 1;
 
     draw_char_name = GetJsonString(comp_obj, "character_name", "");
     draw_emotion = static_cast<int>(GetJsonNumber(comp_obj, "emotion_index", 1));
@@ -1637,9 +1631,7 @@ private:
       // 获取颜色配置
       SDL_Color text_color;
       cJSON *color_obj = cJSON_GetObjectItem(config_obj, "font_color");
-      if (color_obj) {
-        text_color = ParseColor(color_obj);
-      }
+      text_color = ParseColor(color_obj);
 
       // 获取字体
       TTF_Font *font = GetFontCached(font_name, font_size);
@@ -1791,15 +1783,11 @@ private:
     // 获取颜色配置 - 支持多种格式
     SDL_Color text_color = {255, 255, 255, 255};
     cJSON *text_color_obj = cJSON_GetObjectItem(comp_obj, "text_color");
-    if (text_color_obj) {
-      text_color = ParseColor(text_color_obj);
-    }
+    text_color = ParseColor(text_color_obj);
 
     SDL_Color shadow_color = {0, 0, 0, 255};
     cJSON *shadow_color_obj = cJSON_GetObjectItem(comp_obj, "shadow_color");
-    if (shadow_color_obj) {
-      shadow_color = ParseColor(shadow_color_obj);
-    }
+    shadow_color = ParseColor(shadow_color_obj);
 
     int shadow_offset_x = static_cast<int>(GetJsonNumber(comp_obj, "shadow_offset_x", style_config_.shadow_offset_x));
     int shadow_offset_y = static_cast<int>(GetJsonNumber(comp_obj, "shadow_offset_y", style_config_.shadow_offset_y));
@@ -2651,10 +2639,9 @@ __declspec(dllexport) void update_style_config(const char *style_json) { image_l
 
 __declspec(dllexport) void clear_cache(const char *cache_type) { image_loader::ImageLoaderManager::GetInstance().ClearCache(cache_type); }
 
-__declspec(dllexport) int generate_complete_image(const char *assets_path, int canvas_width, int canvas_height, const char *components_json, const char *character_name, int emotion_index, int background_index, unsigned char **out_data, int *out_width,
-                                                  int *out_height) {
+__declspec(dllexport) int generate_complete_image(int canvas_width, int canvas_height, const char *components_json, unsigned char **out_data, int *out_width, int *out_height) {
 
-  return static_cast<int>(image_loader::ImageLoaderManager::GetInstance().GeneratePreviewImage(assets_path, canvas_width, canvas_height, components_json, character_name, emotion_index, background_index, out_data, out_width, out_height));
+  return static_cast<int>(image_loader::ImageLoaderManager::GetInstance().GeneratePreviewImage(canvas_width, canvas_height, components_json, out_data, out_width, out_height));
 }
 
 __declspec(dllexport) int draw_content_simple(const char *text, const char *emoji_json, unsigned char *image_data, int image_width, int image_height, int image_pitch, unsigned char **out_data, int *out_width, int *out_height) {

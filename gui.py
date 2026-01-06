@@ -14,6 +14,8 @@ from config import CONFIGS
 from pyqt_tabs import CharacterTabWidget, BackgroundTabWidget
 from image_processor import clear_cache
 from path_utils import get_resource_path
+from pyqt_setting import SettingWindow
+from pyqt_hotkeys import HotkeyManager
 
 
 class ManosabaMainWindow(QMainWindow):
@@ -38,11 +40,16 @@ class ManosabaMainWindow(QMainWindow):
         # 图片生成状态
         self.is_generating = False
         
+        # 添加标志，跟踪样式窗口是否打开
+        self.style_window_open = False
+        
         # 预览图缩放相关
         self.zoom_level = 1.0
         self.last_mouse_pos = None
         self.is_dragging = False
         
+        self._ignore_signals = False
+
         # 初始化界面
         self._setup_ui()
         
@@ -51,6 +58,9 @@ class ManosabaMainWindow(QMainWindow):
         
         # 初始化数据
         self._init_data()
+
+        # 初始化热键管理器
+        self.hotkey_manager = HotkeyManager(self, self.core)
 
         # 初始预览
         QTimer.singleShot(100, self.update_preview)
@@ -77,6 +87,7 @@ class ManosabaMainWindow(QMainWindow):
     
     def _init_components_tabs(self):
         """初始化组件标签页"""
+        self._ignore_signals = True
         # 清除现有标签页（除了背景标签页）
         while self.ui.tabWidget_Layer.count() > 1:
             widget = self.ui.tabWidget_Layer.widget(1)
@@ -92,6 +103,7 @@ class ManosabaMainWindow(QMainWindow):
         
         if not sorted_components:
             print("警告：没有找到预览样式的组件")
+            self._ignore_signals = False
             return
         
         # 分离背景组件和角色组件
@@ -111,15 +123,14 @@ class ManosabaMainWindow(QMainWindow):
                 'widget_bgColorPreview': self.ui.widget_bgColorPreview
             }
             
-            # 创建背景标签页管理器
-            if not hasattr(self, 'init_background_tab'):
+            # 创建或更新背景标签页管理器
+            if not hasattr(self, 'background_tab') or self.background_tab is None:
                 self.background_tab = BackgroundTabWidget(
                     self, 
                     component_config=bg_component,
                     layer_index=bg_layer,
                     ui_controls=ui_controls
                 )
-                setattr(self, 'init_background_tab', True)
                 # 连接信号到更新预览
                 self.background_tab.config_changed.connect(self._bg_chara_Cfg_changed)
                 
@@ -127,11 +138,11 @@ class ManosabaMainWindow(QMainWindow):
                 tab_name = bg_component.get("name", "背景")
                 self.ui.tabWidget_Layer.setTabText(0, tab_name)
             else:
+                # 更新现有标签页的配置
                 self.background_tab._component_config = bg_component
                 self.background_tab.layer_index = bg_layer
                 self.background_tab._init_from_config()
 
-        
         # 为每个角色组件创建标签页
         for component in character_components:
             layer_index = component.get("layer", 0)
@@ -157,15 +168,26 @@ class ManosabaMainWindow(QMainWindow):
         
         # 更新当前角色
         CONFIGS.current_character = CONFIGS._get_current_character_from_layers()
+        self._ignore_signals = False
+        
+        # 如果样式窗口打开，更新样式窗口的组件编辑器
+        if hasattr(self, 'style_window') and self.style_window:
+            self.style_window.init_component_editors()
 
     def _bg_chara_Cfg_changed(self):
         """背景或角色配置已更改"""
-
+        if self._ignore_signals:
+            return
+        
+        CONFIGS.update_bracket_color_from_character()
         clear_cache()
         self.update_preview()
 
     def _init_style_combo(self):
         """初始化样式选择下拉框"""
+        # 阻塞信号避免初始化时触发事件
+        self.ui.comboBox_StyleSelect.blockSignals(True)
+        
         available_styles = list(CONFIGS.style_configs.keys())
         self.ui.comboBox_StyleSelect.clear()
         self.ui.comboBox_StyleSelect.addItems(available_styles)
@@ -175,6 +197,9 @@ class ManosabaMainWindow(QMainWindow):
         index = self.ui.comboBox_StyleSelect.findText(current_style)
         if index >= 0:
             self.ui.comboBox_StyleSelect.setCurrentIndex(index)
+        
+        # 恢复信号
+        self.ui.comboBox_StyleSelect.blockSignals(False)
     
     def _setup_preview_interaction(self):
         """设置预览区域鼠标交互"""
@@ -410,13 +435,14 @@ class ManosabaMainWindow(QMainWindow):
     @Slot(str)
     def update_status(self, message):
         """更新状态栏"""
-        self.ui.statusbar.showMessage(message, 5000)  # 显示5秒
+        self.ui.statusbar.showMessage(message, 15000)
     
     # 预览图鼠标交互功能
     def _preview_mouse_press(self, event):
         """预览图鼠标按下事件"""
         if event.button() == Qt.MouseButton.LeftButton:
-            self.last_mouse_pos = event.pos()
+            # 使用 position().toPoint() 替代 pos()
+            self.last_mouse_pos = event.position().toPoint()
             self.is_dragging = True
             event.accept()
         else:
@@ -426,8 +452,10 @@ class ManosabaMainWindow(QMainWindow):
     def _preview_mouse_move(self, event):
         """预览图鼠标移动事件"""
         if self.is_dragging and self.last_mouse_pos is not None:
-            delta = event.pos() - self.last_mouse_pos
-            self.last_mouse_pos = event.pos()
+            # 使用 position().toPoint() 替代 pos()
+            current_pos = event.position().toPoint()
+            delta = current_pos - self.last_mouse_pos
+            self.last_mouse_pos = current_pos
             
             # 滚动视图
             h_scroll = self.ui.PreviewImg.horizontalScrollBar()
@@ -464,27 +492,119 @@ class ManosabaMainWindow(QMainWindow):
     
     def _open_settings(self):
         """打开设置窗口"""
-        # TODO: 实现设置窗口
-        self.update_status("设置窗口功能待实现")
-    
+        if hasattr(self, 'hotkey_manager'):
+            self.hotkey_manager.stop()
+
+        settings_window = SettingWindow(self, self.core)
+        settings_window.exec()
+        
+        # 重新加载热键配置
+        self.hotkey_manager.setup_hotkeys()
+
     def _open_style(self):
         """打开样式窗口"""
         from pyqt_style import StyleWindow
         current_style = CONFIGS.current_style
-        style_window = StyleWindow(self, self.core, self, current_style)
-    
-        # 执行对话框
-        style_window.exec()
+        
+        # 设置标志，表示样式窗口已打开
+        self.style_window_open = True
+        
+        # 禁用主界面相关控件并阻塞信号
+        self._disable_main_controls(True)
+        
+        # 创建非模态对话框
+        if not hasattr(self, 'style_window') or not self.style_window:
+            self.style_window = StyleWindow(self, self.core, self, current_style)
+            self.style_window.setModal(False)  # 设置为非模态
+            self.style_window.setWindowModality(Qt.NonModal)  # 非模态模式
+            
+            # 连接样式窗口的信号
+            self.style_window.style_changed.connect(self._on_style_changed_from_window)
+            self.style_window.style_saved.connect(self._on_style_saved)
+            
+            # 连接关闭事件，确保无论何种方式关闭都能恢复
+            self.style_window.destroyed.connect(self._closed_style_window_force)
 
-        if current_style != CONFIGS.current_style:
-            index = self.ui.comboBox_StyleSelect.findText(CONFIGS.current_style)
+            self.style_window.show()
+            self.style_window.raise_()  # 将窗口置于最前
+            self.style_window.activateWindow()  # 激活窗口
+            
+            # 连接关闭事件，以便在窗口关闭时清理引用
+            self.style_window.finished.connect(self._on_style_window_closed)
+        else:
+            # 如果窗口已经存在，就显示它
+            self.style_window.show()
+            self.style_window.raise_()
+            self.style_window.activateWindow()
+    
+    def _closed_style_window_force(self):
+        """强制恢复主界面控件（用于窗口被销毁时）"""
+        if self.style_window_open:
+            self._on_style_window_closed(0)
+
+    def _disable_main_controls(self, disabled):
+        """禁用或启用主界面相关控件"""
+        # 阻塞样式下拉框信号
+        self.ui.comboBox_StyleSelect.blockSignals(disabled)
+        
+        # 禁用样式下拉框
+        self.ui.comboBox_StyleSelect.setEnabled(not disabled)
+        
+        # 禁用标签页控件
+        self.ui.tabWidget_Layer.setEnabled(not disabled)
+        
+        # 如果禁用，记录当前状态；如果启用，恢复更新
+        if disabled:
+            # 保存当前状态
+            self._prev_style_index = self.ui.comboBox_StyleSelect.currentIndex()
+        else:
+            # 恢复信号
+            self.ui.comboBox_StyleSelect.blockSignals(False)
+    
+    def _on_style_window_closed(self, result):
+        """样式窗口关闭时的处理"""
+        # 恢复主界面控件状态
+        self._disable_main_controls(False)
+        
+        # 清理引用
+        self.style_window = None
+        self.style_window_open = False
+        
+        # 如果需要，更新预览
+        if hasattr(self, '_needs_preview_update') and self._needs_preview_update:
+            self.update_preview()
+            delattr(self, '_needs_preview_update')
+    
+    def _on_style_changed_from_window(self, style_name):
+        """从样式窗口接收样式改变信号"""
+        # 如果样式窗口打开，只更新下拉框显示，不触发事件
+        if self.style_window_open:
+            # 阻塞信号避免循环
+            self.ui.comboBox_StyleSelect.blockSignals(True)
+            
+            index = self.ui.comboBox_StyleSelect.findText(style_name)
             if index >= 0:
                 self.ui.comboBox_StyleSelect.setCurrentIndex(index)
+            
+            # 恢复信号
+            self.ui.comboBox_StyleSelect.blockSignals(False)
+    
+    def _on_style_saved(self, style_name):
+        """从样式窗口接收样式保存信号"""
+        # 标记需要更新预览
+        self._needs_preview_update = True
+        
+        # 重新初始化组件标签页（检查是否需要刷新）
+        self._init_components_tabs()
+        
+        # 更新状态
+        self.update_status(f"样式 '{style_name}' 已保存")
 
     def _open_about(self):
         """打开关于窗口"""
-        # TODO: 实现关于窗口
-        self.update_status("关于窗口功能待实现")
+        from pyqt_about import AboutWindow
+        about_window = AboutWindow(self)
+        about_window.exec()
 
     def highlight_preview_rect(self, x, y, width, height, area_type="text"):
         """在预览图上高亮显示指定区域"""
@@ -545,16 +665,20 @@ def main():
     
     # 设置应用程序图标
     icon_path = get_resource_path("assets/icon.ico")
-    app.setWindowIcon(QIcon(icon_path))
+    icon = QIcon(icon_path)
+    app.setWindowIcon(icon)
     
     # 创建主窗口
     main_window = ManosabaMainWindow()
-    
+    main_window.setWindowIcon(icon)
+
     # 显示窗口
     main_window.show()
     
     # 运行应用
-    sys.exit(app.exec())
+    app.exec()
+    main_window.hotkey_manager.stop()
+    sys.exit()
 
 if __name__ == "__main__":
     main()

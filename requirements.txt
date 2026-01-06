@@ -7,3 +7,4 @@ openai
 emoji
 BeautifulSoup4
 requests
+PySide6

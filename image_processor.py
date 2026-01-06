@@ -5,7 +5,7 @@ import json
 import time
 import emoji
 from io import BytesIO
-from ctypes import c_char_p, c_int, POINTER, c_ubyte, c_void_p, c_float, c_bool
+from ctypes import c_char_p, c_int, POINTER, c_ubyte, c_void_p, c_float
 from typing import List, Dict, Any, Tuple, Optional
 from PIL import Image
 
@@ -41,13 +41,9 @@ class EnhancedImageLoaderDLL:
         
         # 生成完整图像（使用JSON字符串）
         self.dll.generate_complete_image.argtypes = [
-            c_char_p,                # assets_path
             c_int,                   # canvas_width
             c_int,                   # canvas_height
             c_char_p,                # components_json
-            c_char_p,                # character_name
-            c_int,                   # emotion_index
-            c_int,                   # background_index
             POINTER(POINTER(c_ubyte)),  # out_data
             POINTER(c_int),          # out_width
             POINTER(c_int)           # out_height
@@ -102,13 +98,9 @@ class EnhancedImageLoaderDLL:
     
     def generate_complete_image(
         self,
-        assets_path: str,
         canvas_width: int,
         canvas_height: int,
         components: List[Dict[str, Any]],
-        character_name: str,
-        emotion_index: int,
-        background_index: int
     ) -> Optional[Image.Image]:
         """生成完整的图像，使用JSON传递组件配置"""
         
@@ -121,18 +113,12 @@ class EnhancedImageLoaderDLL:
         out_height = c_int()
         
         # 调用DLL函数
-        assets_path_bytes = assets_path.encode('utf-8')
         components_json_bytes = components_json.encode('utf-8')
-        character_name_bytes = character_name.encode('utf-8')
         
         result = self.dll.generate_complete_image(
-            assets_path_bytes,
             canvas_width,
             canvas_height,
             components_json_bytes,
-            character_name_bytes,
-            emotion_index,
-            background_index,
             ctypes.byref(out_data),
             ctypes.byref(out_width),
             ctypes.byref(out_height)
@@ -349,23 +335,15 @@ def get_enhanced_loader() -> EnhancedImageLoaderDLL:
     return _enhanced_loader
 
 def generate_image_with_dll(
-    assets_path: str,
     canvas_size: tuple,
     components: List[Dict[str, Any]],
-    character_name: str,
-    emotion_index: int,
-    background_index: int
 ) -> Optional[Image.Image]:
     """使用DLL生成图像"""
     loader = get_enhanced_loader()
     return loader.generate_complete_image(
-        assets_path,
         canvas_size[0],
         canvas_size[1],
-        components,
-        character_name,
-        emotion_index,
-        background_index
+        components
     )
 
 def clear_cache(cache_type: str = "all"):

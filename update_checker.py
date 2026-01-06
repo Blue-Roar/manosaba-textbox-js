@@ -141,17 +141,3 @@ class UpdateChecker:
 
 # 创建单例实例
 update_checker = UpdateChecker()
-
-if __name__ == "__main__":
-    # 测试代码
-    checker = UpdateChecker()
-    result = checker.get_latest_release()
-    if isinstance(result, dict):
-        if 'error' in result:
-            print(f"错误: {result['error']}")
-        else:
-            print(f"最新版本: {result['version']}")
-            print(f"发布时间: {result['published_at']}")
-            print(f"发布说明:\n{result['release_notes'][:200]}...")
-    else:
-        print("获取失败")
