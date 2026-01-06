@@ -23,7 +23,7 @@ class AIClientManager:
             
         except Exception as e:
             print(f"初始化AI客户端失败: {e}")
-            return False
+            return False, e
     
     def _test_connection(self, model_name: str) -> bool:
         """测试连接"""
@@ -34,10 +34,10 @@ class AIClientManager:
                 messages=[{"role": "user", "content": "Hello"}],
                 max_tokens=5
             )
-            return response.choices[0].message.content is not None
+            return response.choices[0].message.content is not None, ""
         except Exception as e:
             print(f"连接测试失败: {e}")
-            return False
+            return False, e
     
 class SentimentAnalyzer:
     def __init__(self):
@@ -63,7 +63,7 @@ class SentimentAnalyzer:
         """
         try:
             # 使用客户端管理器初始化
-            success = self.client_manager.initialize_client(client_type, config)
+            success,error_msg = self.client_manager.initialize_client(client_type, config)
             
             if success:
                 # 发送规则提示词
@@ -78,10 +78,10 @@ class SentimentAnalyzer:
                 else:
                     print(f"AI未正确确认规则，回复: {response}")
                 
-                return self.is_initialized
+                return self.is_initialized, ""
             else:
                 print(f"{client_type} 客户端初始化失败")
-                return False
+                return False, error_msg
                 
         except Exception as e:
             print(f"初始化失败: {e}")
@@ -122,27 +122,6 @@ class SentimentAnalyzer:
         cleaned_response = re.sub(r'[^\w\u4e00-\u9fff]', '', response)
         
         return cleaned_response if cleaned_response in self.emotion_list else None
-        
-    def switch_api(self, new_client_type: str, config: Dict[str, Any]) -> bool:
-        """
-        切换AI客户端
-        """
-        print(f"正在切换到 {new_client_type}")
-        
-        try:
-            success = self.client_manager.initialize_client(new_client_type, config)
-            
-            if success:
-                self.is_initialized = True
-                print(f"成功切换到 {new_client_type}")
-                return True
-            else:
-                print(f"切换到 {new_client_type} 失败")
-                return False
-                
-        except Exception as e:
-            print(f"切换过程中发生错误: {e}")
-            return False
     
     def analyze_sentiment(self, text: str) -> Optional[str]:
         """

@@ -394,18 +394,15 @@ class SettingWindow(QDialog):
         def test_in_thread():
             success = self.core.test_ai_connection(model_name, config)
             
-            # 在主线程更新UI
             self.ui.pushButton_testConn.setEnabled(True)
             if success:
                 self.ui.pushButton_testConn.setText("连接成功")
-                # 2秒后恢复
                 QTimer.singleShot(2000, lambda: self.ui.pushButton_testConn.setText("测试连接"))
             else:
                 self.ui.pushButton_testConn.setText("连接失败")
-                # 2秒后恢复
                 QTimer.singleShot(2000, lambda: self.ui.pushButton_testConn.setText("测试连接"))
         
-        thread = threading.Thread(target=test_in_thread, daemon=True)
+        thread = threading.Thread(target=test_in_thread, daemon=True, name="AIConnectionTest")
         thread.start()
     
     def _collect_settings(self):
@@ -509,10 +506,7 @@ class SettingWindow(QDialog):
             CONFIGS.gui_settings |= new_settings
             if CONFIGS.save_gui_settings():
                 self.core.update_status("设置已保存")
-    
-                # 检查是否需要重新初始化AI模型
-                self.core._reinitialize_sentiment_analyzer_if_needed()
-        
+
         # 保存进程白名单
         processes = self._collect_whitelist()
         if CONFIGS.save_process_whitelist(processes):

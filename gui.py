@@ -1,4 +1,4 @@
-# gui.py - 修改后的主程序
+# gui.py - 修改后的主程序入口
 """PyQt 版本主程序入口"""
 
 import sys
@@ -34,8 +34,10 @@ class ManosabaMainWindow(QMainWindow):
         
         # 初始化核心
         self.core = ManosabaCore()
-        self.core.set_gui_callback(self._on_sentiment_analyzer_status_changed)
-        self.core.set_status_callback(self.update_status)
+
+        # 连接信号到槽
+        self.core.status_updated.connect(self.update_status)
+        self.core.gui_notification.connect(self._update_sentiment_ui)
         
         # 图片生成状态
         self.is_generating = False
@@ -55,15 +57,14 @@ class ManosabaMainWindow(QMainWindow):
         
         # 连接信号槽
         self._connect_signals()
-        
-        # 初始化数据
-        self._init_data()
 
         # 初始化热键管理器
         self.hotkey_manager = HotkeyManager(self, self.core)
 
         # 初始预览
         QTimer.singleShot(100, self.update_preview)
+        # 初始化情感分析器
+        QTimer.singleShot(500, self.core.init_sentiment_analyzer)
 
     def _setup_ui(self):
         """设置UI界面"""
@@ -240,12 +241,35 @@ class ManosabaMainWindow(QMainWindow):
         self.ui.checkBox_AutoSend.setChecked(CONFIGS.config.AUTO_SEND_IMAGE)
         
         # 情感匹配
+        self.ui.checkBox_EmoMatch.setChecked(False)
+        self.ui.checkBox_EmoMatch.setEnabled(True)
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-        if sentiment_settings.get("display", False):
-            self.ui.checkBox_EmoMatch.setChecked(sentiment_settings.get("enabled", False))
-        else:
+        if not sentiment_settings.get("display", False):
             self.ui.checkBox_EmoMatch.hide()
     
+    @Slot(bool, bool, str)
+    def _update_sentiment_ui(self, enabled, available, error_message):
+        """更新情感匹配UI - 通过信号调用"""
+        try:
+            self.ui.checkBox_EmoMatch.setChecked(enabled)
+            self.ui.checkBox_EmoMatch.setEnabled(available)
+            
+            # 显示错误信息或状态
+            if error_message and error_message.strip():
+                self.update_status(error_message)
+            elif enabled and available:
+                self.update_status("情感匹配功能已启用")
+            CONFIGS.gui_settings["sentiment_matching"]["enabled"] = enabled
+            CONFIGS.save_gui_settings()
+                
+        except Exception as e:
+            print(f"更新情感匹配UI时出错: {e}")
+    
+    def on_sentiment_matching_changed(self):
+        """情感匹配设置改变"""
+        checked = self.ui.checkBox_EmoMatch.isChecked()
+        self.core.toggle_sentiment_matching(checked)
+
     def _connect_signals(self):
         """连接信号槽"""
         # 样式选择
@@ -263,30 +287,6 @@ class ManosabaMainWindow(QMainWindow):
         self.ui.menu_setting.clicked.connect(self._open_settings)
         self.ui.menu_style.clicked.connect(self._open_style)
         self.ui.menu_about.clicked.connect(self._open_about)
-    
-    def _init_data(self):
-        """初始化数据"""
-        # 更新情感分析器按钮状态
-        self._update_sentiment_button_state()
-        
-        # 更新状态
-        self.update_status("就绪")
-    
-    def _update_sentiment_button_state(self):
-        """更新情感匹配按钮状态"""
-        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-        if not sentiment_settings.get("display", False):
-            return
-        
-        if self.core.sentiment_analyzer_status['initializing']:
-            self.ui.checkBox_EmoMatch.setEnabled(False)
-            self.ui.checkBox_EmoMatch.setChecked(True)
-        elif self.core.sentiment_analyzer_status['initialized']:
-            self.ui.checkBox_EmoMatch.setEnabled(True)
-            self.ui.checkBox_EmoMatch.setChecked(sentiment_settings.get("enabled", False))
-        else:
-            self.ui.checkBox_EmoMatch.setEnabled(True)
-            self.ui.checkBox_EmoMatch.setChecked(False)
     
     def on_style_changed(self, index):
         """样式改变事件"""
@@ -312,38 +312,6 @@ class ManosabaMainWindow(QMainWindow):
     def on_auto_send_changed(self, checked):
         """自动发送设置改变"""
         CONFIGS.config.AUTO_SEND_IMAGE = checked
-    
-    def on_sentiment_matching_changed(self):
-        """情感匹配设置改变"""
-        self.core.toggle_sentiment_matching()
-    
-    def _on_sentiment_analyzer_status_changed(self, initialized, enabled, initializing=False):
-        """情感分析器状态变化回调"""
-        # 使用 QMetaObject.invokeMethod 在主线程中更新UI
-        if initializing:
-            QMetaObject.invokeMethod(self, "_update_sentiment_ui_initializing", 
-                                    Qt.ConnectionType.QueuedConnection)
-        else:
-            QMetaObject.invokeMethod(self, "_update_sentiment_ui", 
-                                    Qt.ConnectionType.QueuedConnection,
-                                    Q_ARG(bool, enabled))
-    
-    @Slot()
-    def _update_sentiment_ui_initializing(self):
-        """在主线程中更新情感匹配UI（初始化中）"""
-        self.ui.checkBox_EmoMatch.setEnabled(False)
-        self.ui.checkBox_EmoMatch.setChecked(True)
-        self.update_status("正在初始化情感分析器...")
-    
-    @Slot(bool)
-    def _update_sentiment_ui(self, enabled):
-        """在主线程中更新情感匹配UI"""
-        self.ui.checkBox_EmoMatch.setEnabled(True)
-        self.ui.checkBox_EmoMatch.setChecked(enabled)
-        if enabled:
-            self.update_status("情感匹配功能已启用")
-        else:
-            self.update_status("情感匹配功能已禁用")
 
     def update_preview(self):
         """更新预览"""
@@ -434,7 +402,7 @@ class ManosabaMainWindow(QMainWindow):
     
     @Slot(str)
     def update_status(self, message):
-        """更新状态栏"""
+        """更新状态栏 - 通过信号调用"""
         self.ui.statusbar.showMessage(message, 15000)
     
     # 预览图鼠标交互功能
@@ -498,6 +466,8 @@ class ManosabaMainWindow(QMainWindow):
         settings_window = SettingWindow(self, self.core)
         settings_window.exec()
         
+        self.core.init_sentiment_analyzer()
+
         # 重新加载热键配置
         self.hotkey_manager.setup_hotkeys()
 

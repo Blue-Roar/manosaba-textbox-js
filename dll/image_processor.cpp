@@ -776,11 +776,7 @@ public:
 
         // Determine if component is static
         bool is_static = false;
-        if (type == "textbox" || type == "extra" || type == "namebox" || type == "text")
-          is_static = true;
-        else if (type == "character" && GetJsonBool(comp_obj, "use_fixed_character", false))
-          is_static = true;
-        else if (type == "background" && GetJsonBool(comp_obj, "use_fixed_background", false))
+        if (type != "character" && type != "background")
           is_static = true;
 
         if (is_static) {
@@ -798,9 +794,9 @@ public:
       // Draw component based on type
       bool draw_success = false;
       if (type == "background") {
-        draw_success = DrawBackgroundComponent(canvas, current_static_segment, comp_obj);
+        draw_success = DrawBackgroundComponent(canvas, comp_obj);
       } else if (type == "character") {
-        draw_success = DrawCharacterComponent(canvas, current_static_segment, comp_obj);
+        draw_success = DrawCharacterComponent(canvas, comp_obj);
       } else if (type == "namebox") {
         draw_success = DrawNameboxComponent(canvas, current_static_segment, comp_obj);
       } else if (type == "text") {
@@ -1438,7 +1434,7 @@ private:
   }
 
   // 背景组件绘制
-  bool DrawBackgroundComponent(SDL_Surface *target1, SDL_Surface *target2, cJSON *comp_obj) {
+  bool DrawBackgroundComponent(SDL_Surface *target1, cJSON *comp_obj) {
     const char *overlay = GetJsonString(comp_obj, "overlay", "");
 
     DEBUG_PRINT("draw background, overlay: %s", overlay ? overlay : "null");
@@ -1499,18 +1495,15 @@ private:
 
     // Draw to target surfaces
     SDL_Rect pos = utils::CalculatePosition(align, offset_x, offset_y, target1->w, target1->h, final_surface->w, final_surface->h);
-    SDL_Rect pos1 = pos;
     if (target1)
       SDL_BlitSurface(final_surface, nullptr, target1, &pos);
-    if (target2)
-      SDL_BlitSurface(final_surface, nullptr, target2, &pos1);
 
     SDL_FreeSurface(final_surface);
     return true;
   }
 
   // 角色组件绘制
-  bool DrawCharacterComponent(SDL_Surface *target1, SDL_Surface *target2, cJSON *comp_obj) {
+  bool DrawCharacterComponent(SDL_Surface *target1, cJSON *comp_obj) {
     const char *draw_char_name = "hiro";
     int draw_emotion = 1;
 
@@ -1553,12 +1546,9 @@ private:
     int offset_y = comp_offset_y + chara_offset_y;
 
     SDL_Rect pos = utils::CalculatePosition(align, offset_x, offset_y, target1->w, target1->h, final_surface->w, final_surface->h);
-    SDL_Rect pos1 = pos;
 
     if (target1)
       SDL_BlitSurface(final_surface, nullptr, target1, &pos);
-    if (target2)
-      SDL_BlitSurface(final_surface, nullptr, target2, &pos1);
 
     SDL_FreeSurface(final_surface);
     return true;

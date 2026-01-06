@@ -62,8 +62,6 @@ class BackgroundTabWidget(QWidget):
             overlay = component_config.get("overlay", "")
             use_fixed_bg = component_config.get("use_fixed_background", False)
             
-            self._load_background_files(overlay)
-            
             # 先设置所有控件的启用状态
             if not use_fixed_bg:
                 self.checkBox_randomBg.setChecked(True)
@@ -75,6 +73,8 @@ class BackgroundTabWidget(QWidget):
                 self.comboBox_bgSelect.setEnabled(True)
                 if self.lineEdit_bgColor:
                     self.lineEdit_bgColor.setEnabled(True)
+            
+            self._load_background_files(overlay)
             
             # 然后设置控件内容
             if overlay:

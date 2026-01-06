@@ -12,6 +12,7 @@ from pynput.keyboard import Key, Controller
 from sys import platform
 from PIL import Image
 from typing import Dict, Any
+from PySide6.QtCore import QObject, Signal
 
 if platform.startswith("win"):
     try:
@@ -35,243 +36,181 @@ def _calculate_canvas_size():
     
     return (2560, height)
 
-class ManosabaCore:
+class ManosabaCore(QObject):  # 继承 QObject 以支持信号
     """魔裁文本框核心类"""
+    
+    # 定义信号
+    status_updated = Signal(str)  # 状态更新信号
+    gui_notification = Signal(bool, bool, str)  # GUI通知信号(情感分析器状态)
 
     def __init__(self):
+        super().__init__()  # 初始化 QObject
         # 初始化配置
         self.kbd_controller = Controller()
         self.clipboard_manager = ClipboardManager()
-        
-        # 状态更新回调
-        self.status_callback = None
-        self.gui_callback = None
 
-        # 初始化情感分析器 - 不在这里初始化，等待特定时机
+        # 情感分析器 - 简单状态管理
         self.sentiment_analyzer = SentimentAnalyzer()
-        self.sentiment_analyzer_status = {
-            'initialized': False,
-            'initializing': False,
-            'current_config': {}
-        }
+        self.sentiment_enabled = False  # 功能是否启用
+        self.sentiment_available = False  # 分析器是否可用
+        self.current_model = CONFIGS.gui_settings.get("sentiment_matching",{}).get("ai_model", "")  # 当前模型名称
         
         # 初始化DLL加载器
         self._assets_path = CONFIGS.config.ASSETS_PATH
         set_dll_global_config(self._assets_path, min_image_ratio=0.2)
         update_dll_gui_settings(CONFIGS.gui_settings)
-    
-    def set_gui_callback(self, callback):
-        """设置GUI回调函数，用于通知状态变化"""
-        self.gui_callback = callback
 
-    def _notify_gui_status_change(self, initialized: bool, enabled: bool = None, initializing: bool = False):
-        """通知GUI状态变化"""
-        if self.gui_callback:
-            if enabled is None:
-                # 如果没有指定enabled，则使用当前设置
-                sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-                enabled = sentiment_settings.get("enabled", False) and initialized
-            self.gui_callback(initialized, enabled, initializing)
+    def update_status(self, message: str):
+        """更新状态 - 使用信号"""
+        self.status_updated.emit(message)
 
-    def _initialize_sentiment_analyzer_async(self):
-        """异步初始化情感分析器"""
-        def init_task():
-            try:
-                self.sentiment_analyzer_status['initializing'] = True
-                self._notify_gui_status_change(False, False, True)
-                
-                sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-                if sentiment_settings.get("enabled", False):
+    def _notify_gui(self, enabled, available, error_message=""):
+        """通知GUI情感分析器状态变化 - 使用信号"""
+        self.gui_notification.emit(enabled, available, error_message)
+
+    def init_sentiment_analyzer(self):
+        """初始化情感分析器（程序启动时调用）"""
+        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
+        if not sentiment_settings.get("display", False):
+            # 功能不显示，直接返回
+            return
+        
+        enabled = sentiment_settings.get("enabled", False)
+        if not enabled:
+            # 功能未启用，直接返回
+            self._notify_gui(False, True, "")
+            return
+
+        self.toggle_sentiment_matching(enabled)
+
+    def toggle_sentiment_matching(self, enabled):
+        """切换情感匹配状态"""
+        model = CONFIGS.gui_settings.get("sentiment_matching",{}).get("ai_model", "")
+        if model != self.current_model:
+            self.current_model = model
+            self.sentiment_available = False
+            self.sentiment_enabled = False
+            print("模型切换，情感分析器重置")
+
+        if enabled and not self.sentiment_available:
+            # 如果启用但分析器不可用，尝试初始化
+            self.update_status(f"正在初始化({model})情感分析器...")
+            self._notify_gui(True, False, "")
+
+            def try_init():
+                try:
+                    sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
                     client_type = sentiment_settings.get("ai_model", "ollama")
                     model_configs = sentiment_settings.get("model_configs", {})
                     config = model_configs.get(client_type, {})
                     
-                    # 记录当前配置
-                    self.sentiment_analyzer_status['current_config'] = {
-                        'client_type': client_type,
-                        'config': config.copy()
-                    }
-                    
-                    success = self.sentiment_analyzer.initialize(client_type, config)
+                    success,error_msg = self.sentiment_analyzer.initialize(client_type, config)
                     
                     if success:
-                        self.update_status("情感分析器初始化完成，功能已启用")
-                        self.sentiment_analyzer_status['initialized'] = True
-                        # 通知GUI初始化成功
-                        self._notify_gui_status_change(True, True, False)
+                        self.sentiment_available = True
+                        self.sentiment_enabled = True
+                        self._notify_gui(True, True, "")
                     else:
-                        self.update_status("情感分析器初始化失败，功能已禁用")
-                        self.sentiment_analyzer_status['initialized'] = False
-                        # 通知GUI初始化失败，需要禁用情感匹配
-                        self._notify_gui_status_change(False, False, False)
-                        # 更新设置，禁用情感匹配
-                        self._disable_sentiment_matching()
-                else:
-                    self.update_status("情感匹配功能未启用，跳过初始化")
-                    self.sentiment_analyzer_status['initialized'] = False
-                    self._notify_gui_status_change(False, False, False)
-                    
-            except Exception as e:
-                self.update_status(f"情感分析器初始化失败: {e}，功能已禁用")
-                self.sentiment_analyzer_status['initialized'] = False
-                # 通知GUI初始化失败，需要禁用情感匹配
-                self._notify_gui_status_change(False, False, False)
-                # 更新设置，禁用情感匹配
-                self._disable_sentiment_matching()
-            finally:
-                self.sentiment_analyzer_status['initializing'] = False
-        
-        # 在后台线程中初始化
-        init_thread = threading.Thread(target=init_task, daemon=True)
-        init_thread.start()    
-    
-    def toggle_sentiment_matching(self):
-        """切换情感匹配状态"""
-        # 如果正在初始化，不处理点击
-        if self.sentiment_analyzer_status['initializing']:
-            return
+                        self.sentiment_available = False
+                        self.sentiment_enabled = False
+                        error_msg = f"情感分析器初始化失败({error_msg})"
+                        self._notify_gui(False, True, error_msg)
+                        
+                except Exception as e:
+                    error_msg = f"初始化异常: {str(e)}"
+                    self.sentiment_available = False
+                    self.sentiment_enabled = False
+                    self._notify_gui(False, True, error_msg)
             
-        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-        current_enabled = sentiment_settings.get("enabled", False)
-        
-        if not current_enabled:
-            # 如果当前未启用，则启用并初始化
-            CONFIGS.gui_settings["sentiment_matching"]["enabled"] = True
-            CONFIGS.save_gui_settings()
-            if not self.sentiment_analyzer_status['initialized']:
-                # 如果未初始化，则开始初始化
-                self.update_status("正在初始化情感分析器...")
-                self._initialize_sentiment_analyzer_async()
-            else:
-                # 如果已初始化，直接启用
-                self.update_status("已启用情感匹配功能")
-                self._notify_gui_status_change(True, True, False)
+            # 在后台线程中初始化
+            thread = threading.Thread(target=try_init, daemon=True)
+            thread.start()
         else:
-            # 如果当前已启用，则禁用
-            self.update_status("已禁用情感匹配功能")
-            CONFIGS.gui_settings["sentiment_matching"]["enabled"] = False
-            CONFIGS.save_gui_settings()
-            self._notify_gui_status_change(self.sentiment_analyzer_status['initialized'], False, False)
-
-    def _disable_sentiment_matching(self):
-        """禁用情感匹配设置"""
-        if "sentiment_matching" in CONFIGS.gui_settings:
-            CONFIGS.gui_settings["sentiment_matching"]["enabled"] = False
-        # 保存设置
-        CONFIGS.save_gui_settings()
-        self.update_status("情感匹配功能已禁用")
-
-    def _reinitialize_sentiment_analyzer_if_needed(self):
-        """检查配置是否有变化，如果有变化则重新初始化"""
-        sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
-        if not sentiment_settings.get("enabled", False):
-            # 如果功能被禁用，重置状态
-            if self.sentiment_analyzer_status['initialized']:
-                self.sentiment_analyzer_status['initialized'] = False
-                self.update_status("情感匹配已禁用，重置分析器状态")
-                self._notify_gui_status_change(False, False, False)
-            return
-        
-        client_type = sentiment_settings.get("ai_model", "ollama")
-        model_configs = sentiment_settings.get("model_configs", {})
-        config = model_configs.get(client_type, {})
-        
-        new_config = {
-            'client_type': client_type,
-            'config': config.copy()
-        }
-        
-        # 检查配置是否有变化
-        if new_config != self.sentiment_analyzer_status['current_config']:
-            self.update_status("AI配置已更改，重新初始化情感分析器")
-            self.sentiment_analyzer_status['initialized'] = False
-            self.sentiment_analyzer_status['current_config'] = new_config
-            # 通知GUI开始重新初始化
-            self._notify_gui_status_change(False, False, False)
-            self._initialize_sentiment_analyzer_async()
+            # 禁用功能或分析器已可用
+            self.sentiment_enabled = enabled
+            self._notify_gui(enabled, True, "")
 
     def test_ai_connection(self, client_type: str, config: Dict[str, Any]) -> bool:
-        """测试AI连接 - 这会进行模型初始化"""
+        """测试AI连接"""
         try:
-            # 使用临时分析器进行测试，不影响主分析器状态
+            # 创建临时分析器测试
             temp_analyzer = SentimentAnalyzer()
-            success = temp_analyzer.initialize(client_type, config)
+            success, error_msg = temp_analyzer.initialize(client_type, config)
+            
             if success:
-                self.update_status(f"AI连接测试成功: {client_type}")
-                # 如果测试成功，可以更新主分析器
+                # 如果测试成功，更新主分析器
                 self.sentiment_analyzer.initialize(client_type, config)
-                self.sentiment_analyzer_status['initialized'] = True
-                # 通知GUI测试成功
-                self._notify_gui_status_change(True, True)
+                self.sentiment_available = True
+                self.update_status(f"{client_type}连接测试成功")
+                self._notify_gui(True, True, "")
+                return True
             else:
-                self.update_status(f"AI连接测试失败: {client_type}")
-                self.sentiment_analyzer_status['initialized'] = False
-                # 通知GUI测试失败
-                self._notify_gui_status_change(False, False)
-            return success
+                self.update_status(f"{client_type}连接测试失败")
+                self._notify_gui(False, False, f"{client_type}连接测试失败({error_msg})")
+                return False
+                
         except Exception as e:
-            self.update_status(f"连接测试失败: {e}")
-            self.sentiment_analyzer_status['initialized'] = False
-            # 通知GUI测试失败
-            self._notify_gui_status_change(False, False)
+            error_msg = f"连接测试异常: {str(e)}"
+            self.update_status(error_msg)
+            self._notify_gui(False, False, error_msg)
             return False
 
     def _update_emotion_by_sentiment(self, text: str) -> bool:
-        """根据文本情感更新表情，返回是否成功更新了至少一个角色图层"""
-        if not self.sentiment_analyzer_status['initialized']:
-            self.update_status("情感分析器未初始化，跳过情感分析")
+        """根据文本情感更新表情"""
+        if not self.sentiment_available:
+            self.update_status("情感分析器未初始化")
             return False
         
-        # 分析情感（只分析一次）
-        sentiment = self.sentiment_analyzer.analyze_sentiment(text)
-        if not sentiment:
-            return False
-        
-        updated = False
-        current_character = CONFIGS.get_character()
-        
-        # 获取所有角色图层
-        preview_components = CONFIGS.get_sorted_preview_components()
-        
-        for component in preview_components:
-            if not component.get("enabled", True):
-                continue
+        try:
+            # 分析情感
+            sentiment = self.sentiment_analyzer.analyze_sentiment(text)
+            if not sentiment:
+                return False
             
-            if component.get("type") == "character":
-                character_name = component.get("character_name", current_character)
+            updated = False
+            current_character = CONFIGS.get_character()
+            
+            # 获取所有角色图层
+            preview_components = CONFIGS.get_sorted_preview_components()
+            
+            for component in preview_components:
+                if not component.get("enabled", True):
+                    continue
                 
-                # 获取当前角色的表情筛选设置
-                filter_name = component.get("emotion_filter", "全部")
-                
-                # 获取筛选后的表情列表
-                filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
-                
-                if not filtered_emotions:
-                    return False
-                
-                # 从角色配置中获取该情感对应的表情索引
-                emotion_indices = CONFIGS.mahoshojo.get(character_name, {}).get(sentiment, [])
-                
-                # 筛选出在过滤范围内的情感表情
-                available_emotions = [idx for idx in emotion_indices if idx in filtered_emotions]
-                
-                if available_emotions:
-                    # 随机选择一个在筛选范围内的表情
-                    emotion_index = random.choice(available_emotions)
+                if component.get("type") == "character":
+                    character_name = component.get("character_name", current_character)
                     
-                    # 更新组件的表情索引
-                    component["emotion_index"] = emotion_index
-                    component["force_use"] = True
-                    updated = True
+                    # 获取表情筛选设置
+                    filter_name = component.get("emotion_filter", "全部")
+                    filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
                     
-                    # 获取角色全名用于显示
-                    char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                    info = f"角色 {char_full_name} 表情({sentiment}): {emotion_index} |"
-                    self.base_msg += info
-                    print(info)
-        if updated:
-            clear_cache()
-        return updated
+                    if not filtered_emotions:
+                        continue
+                    
+                    # 获取该情感对应的表情索引
+                    emotion_indices = CONFIGS.mahoshojo.get(character_name, {}).get(sentiment, [])
+                    available_emotions = [idx for idx in emotion_indices if idx in filtered_emotions]
+                    
+                    if available_emotions:
+                        # 随机选择表情
+                        emotion_index = random.choice(available_emotions)
+                        component["emotion_index"] = emotion_index
+                        component["force_use"] = True
+                        updated = True
+                        
+                        # 显示更新信息
+                        char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
+                        info = f"角色 {char_full_name} 表情({sentiment}): {emotion_index}"
+                        self.base_msg += info + " | "
+                        print(info)
+            
+            if updated:
+                clear_cache()
+            return updated
+                
+        except Exception as e:
+            self.update_status(f"情感分析失败: {str(e)}")
+            return False
 
     def _active_process_allowed(self) -> bool:
         """校验当前前台进程是否在白名单"""
@@ -313,15 +252,6 @@ class ManosabaCore:
         else:
             # Linux 支持
             return True
-    
-    def set_status_callback(self, callback):
-        """设置状态更新回调函数"""
-        self.status_callback = callback
-
-    def update_status(self, message: str):
-        """更新状态（供外部调用）"""
-        if self.status_callback:
-            self.status_callback(message)
 
     def generate_preview(self) -> tuple:
         """生成预览图片和相关信息"""
@@ -354,58 +284,32 @@ class ManosabaCore:
                 ufc = component.get("use_fixed_character", False)
                 ufb = component.get("use_fixed_background", False)
                 comp_type = component.get("type")
-                if use_cache and ((comp_type in ["background", "character"] and (ufc or ufb)) or comp_type not in ["background", "character"]):
+                if use_cache and (comp_type not in ["background", "character"]):
                     if not compress_layer:
                         cp_components.append({"use_cache": True})
                         compress_layer = True
                     continue
+                if comp_type in ["background", "character"]:
+                    compress_layer = False
 
                 if comp_type == "namebox":
                     # 添加角色文本配置
                     if current_character_name in CONFIGS.mahoshojo:
                         component["textcfg"] = CONFIGS.mahoshojo[current_character_name]["text"]
-                        component["font_name"] = "font3"  # 使用默认字体
+                        component["font_name"] = "font3"
                 elif comp_type == "character":
                     character_name = component.get("character_name", current_character_name)
                     emotion_index = component.get("emotion_index")
                     
                     # 检查是否有强制使用标记
                     force_use = component.get("force_use", False)
+                    
+                    char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
                     if force_use and emotion_index is not None:
-                        emotion_index = int(emotion_index)
                         component.pop("force_use", None)
-                        
-                        # 收集角色信息
-                        char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                        character_info = f"角色: {char_full_name}, 表情: {emotion_index}(强制)"
-                        
-                        # 更新组件的emotion_index
-                        component["emotion_index"] = emotion_index
-                    elif component.get("use_fixed_character", False):
-                        # 使用固定表情
-                        
-                        if emotion_index is None:
-                            # 在过滤范围内随机选择表情
-                            filter_name = component.get("emotion_filter", "全部")
-                            filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
-                            if filtered_emotions:
-                                emotion_index = random.choice(filtered_emotions)
-                            else:
-                                # 如果没有过滤表情，使用所有表情
-                                emotion_count = CONFIGS.mahoshojo.get(character_name, {}).get("emotion_count", 1)
-                                emotion_index = random.randint(1, emotion_count)
-                        else:
-                            # 确保表情索引是整数
-                            emotion_index = int(emotion_index)
-                        
-                        # 收集角色信息
-                        char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                        character_info = f"角色: {char_full_name}, 表情: {emotion_index}"
-                        
-                        # 更新组件的emotion_index
-                        component["emotion_index"] = emotion_index
+                    elif ufc and emotion_index:
+                        pass
                     else:
-                        
                         # 在过滤范围内随机选择表情
                         filter_name = component.get("emotion_filter", "全部")
                         filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
@@ -416,89 +320,48 @@ class ManosabaCore:
                             emotion_count = CONFIGS.mahoshojo.get(character_name, {}).get("emotion_count", 1)
                             emotion_index = random.randint(1, emotion_count)
                         
-                        component["character_name"] = character_name
                         component["emotion_index"] = emotion_index
-                        
-                        # 收集角色信息
-                        char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                        compress_layer = False
-                        character_info = f"角色: {char_full_name}, 表情: 随机({emotion_index})"
+                    
+                    # 收集角色信息
+                    character_info = f"角色: {char_full_name}, 表情: ({emotion_index}) |"
                     
                     # 获取角色配置
                     character_config = CONFIGS.mahoshojo.get(character_name, {})
-                    
-                    # 设置缩放
                     component["scale1"] = float(character_config.get("scale", 1.0))
                     
                     # 设置偏移
                     offset = character_config.get("offset", (0, 0))
-                    offset_x = 0
-                    offset_y = 0
-                    
-                    # 获取表情偏移
                     emotion_offsets_X = character_config.get("offsetX", {})
                     emotion_offsets_Y = character_config.get("offsetY", {})
                     
-                    if emotion_offsets_X and str(emotion_index) in emotion_offsets_X:
-                        offset_x = float(emotion_offsets_X[str(emotion_index)])
-                    if emotion_offsets_Y and str(emotion_index) in emotion_offsets_Y:
-                        offset_y = float(emotion_offsets_Y[str(emotion_index)])
-                    
-                    # 加上基础偏移
-                    if isinstance(offset, (tuple, list)) and len(offset) >= 2:
-                        offset_x += float(offset[0])
-                        offset_y += float(offset[1])
-                    
-                    component["offset_x1"] = offset_x
-                    component["offset_y1"] = offset_y
+                    component["offset_x1"] = emotion_offsets_X.get(str(emotion_index), 0) + offset[0]
+                    component["offset_y1"] = emotion_offsets_Y.get(str(emotion_index), 0) + offset[1]
                     
                 elif comp_type == "background":
                     overlay = component.get("overlay", "")
-                    if component.get("use_fixed_background", False) and overlay:
-                        # 使用固定背景 - 颜色或图片
-                        print(f"背景组件 - 固定背景overlay: {overlay}")
+                    if ufb and overlay:
                         if overlay.startswith("#"):
-                            # 颜色背景
-                            background_info = f"背景: 纯色({overlay})"
-                            # 确保组件包含颜色信息
-                            component["color"] = overlay
+                            background_info = f"纯色背景: {overlay} |"
                         else:
-                            # 图片背景
-                            background_info = f"背景: 图片({overlay})"
-                        compress_layer = False
+                            background_info = f"固定背景: {overlay} |"
                     else:
-                        # 随机背景
                         background_count = CONFIGS.background_count
                         if background_count > 0:
                             overlay = random.choice(CONFIGS.background_list)
                             component["overlay"] = overlay
-                            compress_layer = False
-                            background_info = f"背景: 随机({overlay})"
-                        else:
-                            # 没有背景图片
-                            component["overlay"] = ""
+                            background_info = f"随机背景: {overlay} |"
                 cp_components.append(component)
-
-            # 如果没有收集到背景信息，说明没有背景组件
-            if not background_info:
-                background_info = "背景: 无"
-            
-            # 如果没有收集到角色信息，说明没有角色组件
-            if not character_info:
-                character_info = "角色: 无"
             
             # 使用DLL生成图像
             preview_image = generate_image_with_dll(_calculate_canvas_size(), cp_components,)
             
             get_enhanced_loader().layer_cache = True
 
+            info = f"{character_info if character_info else ""} {background_info if background_info else ""} | 生成{"成功" if preview_image else "失败"}"
             if preview_image:
                 print(f"预览生成用时: {int((time.time()-st)*1000)}ms")
-                info = f"{character_info} | {background_info} | 生成成功"
             else:
-                print("预览图生成失败，使用默认图片")
-                preview_image = Image.new("RGBA", _calculate_canvas_size(), (0, 0, 0, 0))
-                info = f"{character_info} | {background_info} | 生成失败"
+                print("CPP端预览图生成失败")
                 
         except Exception as e:
             print(f"预览图生成出错: {e}")
@@ -598,9 +461,7 @@ class ManosabaCore:
         # 情感匹配处理
         sentiment_settings = CONFIGS.gui_settings.get("sentiment_matching", {})
 
-        if (sentiment_settings.get("enabled", False) and 
-            self.sentiment_analyzer_status['initialized'] and
-            text.strip()):
+        if (sentiment_settings.get("enabled", False) and self.sentiment_enabled and text.strip()):
             
             emotion_updated = self._update_emotion_by_sentiment(text)
             
