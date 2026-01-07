@@ -16,7 +16,7 @@ class EnhancedImageLoaderDLL:
         from path_utils import get_internal_path
         
         if dll_path is None:
-            dll_path = get_internal_path("Image_Processor.dll")
+            dll_path = get_internal_path("dll/Image_Processor.dll")
         
         if not os.path.exists(dll_path):
             raise FileNotFoundError(f"DLL文件不存在: {dll_path}")

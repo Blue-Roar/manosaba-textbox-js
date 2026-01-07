@@ -23,7 +23,7 @@ def collect_files(pattern, dest_folder='.'):
 # 收集所有资源文件
 datas = []
 
-# 添加核心Python文件 - 更新为PyQt版本的文件
+# 添加核心Python文件
 core_files = [
     'gui.py',
     'core.py',
@@ -38,18 +38,15 @@ core_files = [
     'path_utils.py',
     'image_processor.py',
     'update_checker.py',
-
-    'ui_pyqt_main.py',
-    'ui_pyqt_components.py',
-    'ui_pyqt_setting.py',
-    'ui_pyqt_style.py',
-    'ui_pyqt_about.py'
 ]
 
 for file in core_files:
     if os.path.exists(file):
         datas.append((file, '.'))
 
+# 自动扫描libs文件夹中的所有DLL文件
+dll_files = collect_files('dll/*.dll', 'dll')
+datas.extend(dll_files)
 
 # 收集证书文件
 try:
@@ -94,16 +91,9 @@ hiddenimports = [
 ]
 
 a = Analysis(
-    ['gui.py'],  # 修改入口文件为gui.py
+    ['gui.py'],
     pathex=[os.getcwd()],
-    binaries=[
-        ('Image_Processor.dll', '.'),
-        ('SDL2_image.dll', '.'),
-        ('SDL2_ttf.dll', '.'),
-        ('SDL2.dll', '.'),
-        ('libwebpdemux-2.dll', '.'),
-        ('libwebp-7.dll', '.'),
-    ],
+    binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

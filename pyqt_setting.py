@@ -4,7 +4,7 @@ from PySide6.QtCore import Signal, QThread, QTimer
 import threading
 from pynput import keyboard
 
-from ui_pyqt_setting import Ui_SettingWindow
+from ui.setting_window import Ui_SettingWindow
 from config import CONFIGS
 
 

@@ -8,7 +8,7 @@ from PySide6.QtGui import QImage, QPixmap, QIcon
 import threading
 import traceback
 
-from ui_pyqt_main import Ui_MainWindow
+from ui.main_window import Ui_MainWindow
 from core import ManosabaCore
 from config import CONFIGS
 from pyqt_tabs import CharacterTabWidget, BackgroundTabWidget

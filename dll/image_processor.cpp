@@ -9,9 +9,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <Windows.h>
 
 // 计时用
-// #define _DEBUG
+#define _DEBUG
 #ifdef _DEBUG
 #include <chrono>
 #define DEBUG_PRINT(fmt, ...) printf("[DEBUG] " fmt "\n", ##__VA_ARGS__)
@@ -607,6 +608,28 @@ public:
   // Initialize SDL
   bool InitSDL() {
     if (!sdl_initialized_) {
+#ifdef _WIN32
+        // 获取当前DLL的路径，然后设置其所在目录为搜索路径
+        HMODULE hModule = NULL;
+        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+            (LPCTSTR)&ImageLoaderManager::GetInstance, &hModule)) {
+            wchar_t path[MAX_PATH];
+            GetModuleFileNameW(hModule, path, MAX_PATH);
+
+            // 移除文件名，只保留目录
+            wchar_t* lastSlash = wcsrchr(path, L'\\');
+            if (lastSlash) {
+                *lastSlash = L'\0';
+
+                if (SetDllDirectoryW(path)) {
+                    DEBUG_PRINT("Set DLL directory to: %ls", path);
+                }
+                else {
+                    DEBUG_PRINT("Failed to set DLL directory, error: %lu", GetLastError());
+                }
+            }
+        }
+#endif
       if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         DEBUG_PRINT("SDL initialization failed: %s", SDL_GetError());
         return false;
@@ -2480,8 +2503,8 @@ void ImageLoaderManager::DrawTextAndEmojiToCanvas(SDL_Surface *canvas, const std
         }
 
         // 计算段与行的重叠部分
-        int overlap_start = std::max(seg_start, line_start);
-        int overlap_end = std::min(seg_end, line_end);
+        int overlap_start = seg_start >= line_start? seg_start:line_start;
+        int overlap_end = seg_end<= line_end?seg_end:line_end;
 
         if (overlap_start < overlap_end) {
           // 添加重叠部分到当前行

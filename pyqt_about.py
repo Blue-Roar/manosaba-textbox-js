@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QDialog
 from PySide6.QtCore import QThread, Signal
 import traceback
 
-from ui_pyqt_about import Ui_AboutWindow
+from ui.about_window import Ui_AboutWindow
 from config import CONFIGS
 from update_checker import update_checker
 

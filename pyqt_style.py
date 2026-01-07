@@ -3,7 +3,7 @@
 
 from PySide6.QtCore import Qt, Slot, Signal, QMetaObject
 from PySide6.QtWidgets import (QDialog, QMessageBox, QVBoxLayout, QGroupBox, QMenu)
-from ui_pyqt_components import (
+from ui.components import (
     CharacterComponent, BackgroundComponent, 
     ImageComponent, NameboxComponent,
     TextComponent
@@ -612,7 +612,7 @@ class StyleWindow(QDialog):
     
     def setup_ui(self):
         """设置UI界面"""
-        from ui_pyqt_style import Ui_StyleWindow
+        from ui.style_window import Ui_StyleWindow
         self.ui = Ui_StyleWindow()
         self.ui.setupUi(self)
         self.setWindowTitle("样式编辑")
@@ -1219,7 +1219,7 @@ class StyleWindow(QDialog):
         # 通知主窗口恢复控件
         if self.gui:
             try:
-                QMetaObject.invokeMethod(self.gui, "_closed_style_window_force", 
+                QMetaObject.invokeMethod(self.gui, "_closed_style_window", 
                                         Qt.ConnectionType.QueuedConnection)
             except Exception as e:
                 print(f"恢复主窗口控件时出错: {e}")

@@ -3,7 +3,7 @@
 
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Signal
-from ui_pyqt_components import Ui_CharaCfg
+from ui.components import Ui_CharaCfg
 from config import CONFIGS
 from image_processor import clear_cache
 

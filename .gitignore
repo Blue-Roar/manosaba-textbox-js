@@ -1,8 +1,8 @@
 /assets/cache/
 /__pycache__/
+ui/__pycache__/
 /.vs/
 /.vscode/
-/emoji_png/
 config/settings.yml
 /build/
 config/keymap.yml
