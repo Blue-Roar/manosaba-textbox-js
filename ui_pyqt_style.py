@@ -559,6 +559,9 @@ class Ui_StyleWindow(object):
         self.buttonBox = QDialogButtonBox(Form)
         self.buttonBox.setObjectName(u"buttonBox")
         self.buttonBox.setStandardButtons(QDialogButtonBox.StandardButton.Apply|QDialogButtonBox.StandardButton.Cancel|QDialogButtonBox.StandardButton.Save)
+        self.buttonBox.button(QDialogButtonBox.Save).setText("保存")
+        self.buttonBox.button(QDialogButtonBox.Apply).setText("应用")
+        self.buttonBox.button(QDialogButtonBox.Cancel).setText("取消")
 
         self.verticalLayout.addWidget(self.buttonBox)
 

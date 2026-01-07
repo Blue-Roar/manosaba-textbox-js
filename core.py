@@ -200,8 +200,8 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
                         
                         # 显示更新信息
                         char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                        info = f"角色 {char_full_name} 表情({sentiment}): {emotion_index}"
-                        self.base_msg += info + " | "
+                        info = f"角色 {char_full_name} | {sentiment}: ({emotion_index}) |"
+                        self.base_msg += info
                         print(info)
             
             if updated:

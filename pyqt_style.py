@@ -51,8 +51,6 @@ DEFAULT_VALUES = {
 class ComponentEditor(QGroupBox):
     """组件编辑器"""
     
-    config_changed = Signal(object)
-    
     def __init__(self, parent, style_window, component_config, index):
         super().__init__(parent)
         self.parent_widget = parent
@@ -104,31 +102,9 @@ class ComponentEditor(QGroupBox):
         if hasattr(self.component_widget, 'button_edit'):
             self.component_widget.button_edit.clicked.connect(self._toggle_expand)
         
-        # 启用复选框连接
-        if hasattr(self.component_widget, 'checkbox_enable'):
-            self.component_widget.checkbox_enable.toggled.connect(self.config_changed.emit)
-        
-        # 组件名称连接
-        if hasattr(self.component_widget, 'edit_component_name'):
-            self.component_widget.edit_component_name.textChanged.connect(self.config_changed.emit)
-        
         # 角色选择连接（仅角色组件）
         if self.component_type == "character" and hasattr(self.component_widget, 'combo_character'):
             self.component_widget.combo_character.currentIndexChanged.connect(self._on_character_changed)
-        
-        # 位置和缩放连接
-        if hasattr(self.component_widget, 'edit_offset_x'):
-            self.component_widget.edit_offset_x.textChanged.connect(self.config_changed.emit)
-        
-        if hasattr(self.component_widget, 'edit_offset_y'):
-            self.component_widget.edit_offset_y.textChanged.connect(self.config_changed.emit)
-        
-        if hasattr(self.component_widget, 'edit_scale'):
-            self.component_widget.edit_scale.textChanged.connect(self.config_changed.emit)
-        
-        # 对齐方式连接
-        if hasattr(self.component_widget, 'combo_align'):
-            self.component_widget.combo_align.currentIndexChanged.connect(self.config_changed.emit)
         
         # 删除按钮连接
         if hasattr(self.component_widget, 'button_delete'):
@@ -617,9 +593,7 @@ class ComponentEditor(QGroupBox):
 class StyleWindow(QDialog):
     """样式编辑窗口"""
     
-    config_changed = Signal()
     style_changed = Signal(str)  # 样式改变信号
-    style_saved = Signal(str)    # 样式保存信号
     
     def __init__(self, parent=None, core=None, gui=None, current_style=None):
         super().__init__(parent)
@@ -874,10 +848,10 @@ class StyleWindow(QDialog):
         if reply == QMessageBox.StandardButton.Yes:
             current_style_name = self.ui.comboBox_style.currentText()
             default_components = CONFIGS.style.default_config.get(current_style_name, {}).get("image_components", [])
-            
+            CONFIGS.style_configs[current_style_name]["image_components"] = default_components
             if default_components:
-                clear_cache()
                 self.init_component_editors()
+                clear_cache()
                 
                 if self.gui:
                     self.gui.update_status(f"已重置样式 '{current_style_name}' 的组件到默认配置")
@@ -1187,6 +1161,7 @@ class StyleWindow(QDialog):
         if current_count != self.original_component_count:
             needs_reinit = True
             print(f"组件数量变化: {self.original_component_count} -> {current_count}")
+            self.original_component_count = current_count
         
         # 检查是否有角色或背景组件被添加/删除
         if not needs_reinit:
@@ -1212,7 +1187,7 @@ class StyleWindow(QDialog):
         if success:
             if self.gui:
                 clear_cache()
-                self.style_saved.emit(style_name)
+                self.style_changed.emit(style_name)
                 
                 # 如果需要重新初始化，更新预览
                 if needs_reinit:

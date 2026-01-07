@@ -2125,7 +2125,7 @@ private:
 
   // 加载emoji图片
   SDL_Surface *LoadEmojiImage(const std::string &emoji_text, int target_size);
-  //   void DrawImageToCanvasWithRegion(SDL_Surface *canvas, unsigned char *image_data, int image_width, int image_height, int image_pitch, int region_x, int region_y, int region_width, int region_height);
+
   // 将emoji字符串转换为文件名
   std::string EmojiToFileName(const std::string &emoji_text);
 };
@@ -2513,15 +2513,37 @@ void ImageLoaderManager::DrawTextAndEmojiToCanvas(SDL_Surface *canvas, const std
 
   // 10. 绘制文本
   bool has_shadow = (config->shadow_offset_x != 0 || config->shadow_offset_y != 0);
+  
+  // 解析对齐字符串，获取垂直对齐方式
+  std::string align_str(config->text_align);
+  std::string halign = "left"; // 默认水平左对齐
+  std::string valign = "top";  // 默认垂直上对齐
 
-  // 计算垂直起始位置 - 现在从合并的text_align中解析
+  // 从对齐字符串中提取水平和垂直对齐
+  if (align_str.find("center") != std::string::npos) {
+    halign = "center";
+  } else if (align_str.find("right") != std::string::npos) {
+    halign = "right";
+  }
+
+  if (align_str.find("middle") != std::string::npos) {
+    valign = "middle";
+  } else if (align_str.find("bottom") != std::string::npos) {
+    valign = "bottom";
+  }
+
+  // 计算垂直起始位置
   int total_height = static_cast<int>(lines_segments.size() * line_height);
   int current_y = text_y;
 
-  // 从合并的对齐方式中提取垂直对齐部分
-  std::string align_str(config->text_align);
+  // 根据垂直对齐调整起始Y坐标
+  if (valign == "middle") {
+    current_y += (text_height - total_height) / 2;
+  } else if (valign == "bottom") {
+    current_y += text_height - total_height;
+  }
 
-  DEBUG_PRINT("Alignment '%s', start Y: %d, total height: %d", config->text_align, current_y, total_height);
+  DEBUG_PRINT("Vertical alignment: %s, start Y: %d, total height: %d", valign.c_str(), current_y, total_height);
 
   // 绘制每一行
   for (size_t line_idx = 0; line_idx < lines_segments.size(); line_idx++) {
@@ -2546,11 +2568,11 @@ void ImageLoaderManager::DrawTextAndEmojiToCanvas(SDL_Surface *canvas, const std
       }
     }
 
-    // 计算水平起始位置
+    // 计算水平起始位置 - 根据水平对齐方式
     int current_x = text_x;
-    if (align_str.find("right") != std::string::npos) {
+    if (halign == "right") {
       current_x += text_width - line_width;
-    } else if (align_str.find("center") != std::string::npos) {
+    } else if (halign == "center") {
       current_x += (text_width - line_width) / 2;
     }
 

@@ -88,92 +88,93 @@ class ManosabaMainWindow(QMainWindow):
     
     def _init_components_tabs(self):
         """初始化组件标签页"""
-        self._ignore_signals = True
-        # 清除现有标签页（除了背景标签页）
-        while self.ui.tabWidget_Layer.count() > 1:
-            widget = self.ui.tabWidget_Layer.widget(1)
-            if widget:
-                widget.deleteLater()
-            self.ui.tabWidget_Layer.removeTab(1)
+        try:
+            self._ignore_signals = True
+            # 清除现有标签页（除了背景标签页）
+            while self.ui.tabWidget_Layer.count() > 1:
+                widget = self.ui.tabWidget_Layer.widget(1)
+                if widget:
+                    widget.deleteLater()
+                self.ui.tabWidget_Layer.removeTab(1)
 
-        # 清空标签页引用
-        self.character_tabs.clear()
-        
-        # 获取预览样式的组件
-        sorted_components = CONFIGS.get_sorted_preview_components()
-        
-        if not sorted_components:
-            print("警告：没有找到预览样式的组件")
-            self._ignore_signals = False
-            return
-        
-        # 分离背景组件和角色组件
-        background_components = [c for c in sorted_components if c.get("type") == "background"]
-        character_components = [c for c in sorted_components if c.get("type") == "character"]
-        
-        # 设置背景标签页（第一个标签页）
-        if background_components and self.ui.tabWidget_Layer.count() > 0:
-            bg_component = background_components[0]
-            bg_layer = bg_component.get("layer", 0)
+            # 清空标签页引用
+            self.character_tabs.clear()
             
-            # 准备UI控件
-            ui_controls = {
-                'checkBox_randomBg': self.ui.checkBox_randomBg,
-                'comboBox_bgSelect': self.ui.comboBox_bgSelect,
-                'lineEdit_bgColor': self.ui.lineEdit,
-                'widget_bgColorPreview': self.ui.widget_bgColorPreview
-            }
+            # 获取预览样式的组件
+            sorted_components = CONFIGS.get_sorted_preview_components()
             
-            # 创建或更新背景标签页管理器
-            if not hasattr(self, 'background_tab') or self.background_tab is None:
-                self.background_tab = BackgroundTabWidget(
-                    self, 
-                    component_config=bg_component,
-                    layer_index=bg_layer,
-                    ui_controls=ui_controls
-                )
-                # 连接信号到更新预览
-                self.background_tab.config_changed.connect(self._bg_chara_Cfg_changed)
+            if not sorted_components:
+                print("警告：没有找到预览样式的组件")
+                return
+            
+            # 分离背景组件和角色组件
+            background_components = [c for c in sorted_components if c.get("type") == "background"]
+            character_components = [c for c in sorted_components if c.get("type") == "character"]
+            
+            # 设置背景标签页（第一个标签页）
+            if background_components and self.ui.tabWidget_Layer.count() > 0:
+                bg_component = background_components[0]
+                bg_layer = bg_component.get("layer", 0)
                 
-                # 更新标签页标题
-                tab_name = bg_component.get("name", "背景")
-                self.ui.tabWidget_Layer.setTabText(0, tab_name)
-            else:
-                # 更新现有标签页的配置
-                self.background_tab._component_config = bg_component
-                self.background_tab.layer_index = bg_layer
-                self.background_tab._init_from_config()
+                # 准备UI控件
+                ui_controls = {
+                    'checkBox_randomBg': self.ui.checkBox_randomBg,
+                    'comboBox_bgSelect': self.ui.comboBox_bgSelect,
+                    'lineEdit_bgColor': self.ui.lineEdit,
+                    'widget_bgColorPreview': self.ui.widget_bgColorPreview
+                }
+                
+                # 创建或更新背景标签页管理器
+                if not hasattr(self, 'background_tab') or self.background_tab is None:
+                    self.background_tab = BackgroundTabWidget(
+                        self, 
+                        component_config=bg_component,
+                        layer_index=bg_layer,
+                        ui_controls=ui_controls
+                    )
+                    # 连接信号到更新预览
+                    self.background_tab.config_changed.connect(self._bg_chara_Cfg_changed)
+                    
+                    # 更新标签页标题
+                    tab_name = bg_component.get("name", "背景")
+                    self.ui.tabWidget_Layer.setTabText(0, tab_name)
+                else:
+                    # 更新现有标签页的配置
+                    self.background_tab._component_config = bg_component
+                    self.background_tab.layer_index = bg_layer
+                    self.background_tab._init_from_config()
 
-        # 为每个角色组件创建标签页
-        for component in character_components:
-            layer_index = component.get("layer", 0)
+            # 为每个角色组件创建标签页
+            for component in character_components:
+                layer_index = component.get("layer", 0)
+                
+                # 创建角色标签页
+                tab = CharacterTabWidget(self, component_config=component, layer_index=layer_index)
+                
+                # 连接信号到更新预览
+                tab.config_changed.connect(self._bg_chara_Cfg_changed)
+                
+                # 使用组件名、角色名或默认名称
+                if "name" in component:
+                    tab_name = component["name"]
+                elif "character_name" in component:
+                    char_id = component["character_name"]
+                    full_name = CONFIGS.get_character(char_id, full_name=True)
+                    tab_name = f"{full_name}"
+                else:
+                    tab_name = f"角色 {layer_index}"
+                
+                self.ui.tabWidget_Layer.addTab(tab, tab_name)
+                self.character_tabs.append(tab)
             
-            # 创建角色标签页
-            tab = CharacterTabWidget(self, component_config=component, layer_index=layer_index)
+            # 更新当前角色
+            CONFIGS.current_character = CONFIGS._get_current_character_from_layers()
             
-            # 连接信号到更新预览
-            tab.config_changed.connect(self._bg_chara_Cfg_changed)
-            
-            # 使用组件名、角色名或默认名称
-            if "name" in component:
-                tab_name = component["name"]
-            elif "character_name" in component:
-                char_id = component["character_name"]
-                full_name = CONFIGS.get_character(char_id, full_name=True)
-                tab_name = f"{full_name}"
-            else:
-                tab_name = f"角色 {layer_index}"
-            
-            self.ui.tabWidget_Layer.addTab(tab, tab_name)
-            self.character_tabs.append(tab)
-        
-        # 更新当前角色
-        CONFIGS.current_character = CONFIGS._get_current_character_from_layers()
-        self._ignore_signals = False
-        
-        # 如果样式窗口打开，更新样式窗口的组件编辑器
-        if hasattr(self, 'style_window') and self.style_window:
-            self.style_window.init_component_editors()
+            # 如果样式窗口打开，更新样式窗口的组件编辑器
+            if hasattr(self, 'style_window') and self.style_window:
+                self.style_window.init_component_editors()
+        finally:
+            self._ignore_signals = False
 
     def _bg_chara_Cfg_changed(self):
         """背景或角色配置已更改"""
@@ -474,7 +475,6 @@ class ManosabaMainWindow(QMainWindow):
     def _open_style(self):
         """打开样式窗口"""
         from pyqt_style import StyleWindow
-        current_style = CONFIGS.current_style
         
         # 设置标志，表示样式窗口已打开
         self.style_window_open = True
@@ -484,33 +484,29 @@ class ManosabaMainWindow(QMainWindow):
         
         # 创建非模态对话框
         if not hasattr(self, 'style_window') or not self.style_window:
-            self.style_window = StyleWindow(self, self.core, self, current_style)
+            self.style_window = StyleWindow(self, self.core, self, CONFIGS.current_style)
             self.style_window.setModal(False)  # 设置为非模态
             self.style_window.setWindowModality(Qt.NonModal)  # 非模态模式
             
             # 连接样式窗口的信号
             self.style_window.style_changed.connect(self._on_style_changed_from_window)
-            self.style_window.style_saved.connect(self._on_style_saved)
-            
-            # 连接关闭事件，确保无论何种方式关闭都能恢复
-            self.style_window.destroyed.connect(self._closed_style_window_force)
-
-            self.style_window.show()
-            self.style_window.raise_()  # 将窗口置于最前
-            self.style_window.activateWindow()  # 激活窗口
-            
-            # 连接关闭事件，以便在窗口关闭时清理引用
-            self.style_window.finished.connect(self._on_style_window_closed)
-        else:
-            # 如果窗口已经存在，就显示它
-            self.style_window.show()
-            self.style_window.raise_()
-            self.style_window.activateWindow()
+            self.style_window.destroyed.connect(self._closed_style_window)
+            self.style_window.finished.connect(self._closed_style_window)
+        
+        # 显示窗口
+        self.style_window.show()
+        self.style_window.raise_()
+        self.style_window.activateWindow()
     
-    def _closed_style_window_force(self):
+    def _closed_style_window(self):
         """强制恢复主界面控件（用于窗口被销毁时）"""
         if self.style_window_open:
-            self._on_style_window_closed(0)
+            # 恢复主界面控件状态
+            self._disable_main_controls(False)
+            
+            # 清理引用
+            self.style_window = None
+            self.style_window_open = False
 
     def _disable_main_controls(self, disabled):
         """禁用或启用主界面相关控件"""
@@ -524,26 +520,8 @@ class ManosabaMainWindow(QMainWindow):
         self.ui.tabWidget_Layer.setEnabled(not disabled)
         
         # 如果禁用，记录当前状态；如果启用，恢复更新
-        if disabled:
-            # 保存当前状态
-            self._prev_style_index = self.ui.comboBox_StyleSelect.currentIndex()
-        else:
-            # 恢复信号
+        if not disabled:
             self.ui.comboBox_StyleSelect.blockSignals(False)
-    
-    def _on_style_window_closed(self, result):
-        """样式窗口关闭时的处理"""
-        # 恢复主界面控件状态
-        self._disable_main_controls(False)
-        
-        # 清理引用
-        self.style_window = None
-        self.style_window_open = False
-        
-        # 如果需要，更新预览
-        if hasattr(self, '_needs_preview_update') and self._needs_preview_update:
-            self.update_preview()
-            delattr(self, '_needs_preview_update')
     
     def _on_style_changed_from_window(self, style_name):
         """从样式窗口接收样式改变信号"""
@@ -555,20 +533,10 @@ class ManosabaMainWindow(QMainWindow):
             index = self.ui.comboBox_StyleSelect.findText(style_name)
             if index >= 0:
                 self.ui.comboBox_StyleSelect.setCurrentIndex(index)
+            self._init_components_tabs()
             
             # 恢复信号
             self.ui.comboBox_StyleSelect.blockSignals(False)
-    
-    def _on_style_saved(self, style_name):
-        """从样式窗口接收样式保存信号"""
-        # 标记需要更新预览
-        self._needs_preview_update = True
-        
-        # 重新初始化组件标签页（检查是否需要刷新）
-        self._init_components_tabs()
-        
-        # 更新状态
-        self.update_status(f"样式 '{style_name}' 已保存")
 
     def _open_about(self):
         """打开关于窗口"""
