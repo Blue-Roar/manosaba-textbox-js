@@ -161,11 +161,6 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
             return False
         
         try:
-            # 分析情感
-            sentiment = self.sentiment_analyzer.analyze_sentiment(text)
-            if not sentiment:
-                return False
-            
             updated = False
             current_character = CONFIGS.get_character()
             
@@ -179,29 +174,65 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
                 if component.get("type") == "character":
                     character_name = component.get("character_name", current_character)
                     
-                    # 获取表情筛选设置
-                    filter_name = component.get("emotion_filter", "全部")
-                    filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
+                    # 检查是否是PSD组件
+                    is_psd_component = component.get("overlay") == "__PSD__"
                     
-                    if not filtered_emotions:
-                        continue
-                    
-                    # 获取该情感对应的表情索引
-                    emotion_indices = CONFIGS.mahoshojo.get(character_name, {}).get(sentiment, [])
-                    available_emotions = [idx for idx in emotion_indices if idx in filtered_emotions]
-                    
-                    if available_emotions:
-                        # 随机选择表情
-                        emotion_index = random.choice(available_emotions)
-                        component["emotion_index"] = emotion_index
-                        component["force_use"] = True
-                        updated = True
+                    if is_psd_component:
+                        # PSD组件：直接分析并选择表情名称
+                        psd_info = CONFIGS.get_psd_info(character_name)
+                        if not psd_info:
+                            continue
                         
-                        # 显示更新信息
-                        char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                        info = f"角色 {char_full_name} | {sentiment}: ({emotion_index}) |"
-                        self.base_msg += info
-                        print(info)
+                        pose = component.get("pose", "")
+                        expressions = psd_info["poses"].get(pose, {}).get("expressions", [])
+                        
+                        if not expressions:
+                            continue
+                        
+                        # 使用情感分析器从表情列表中选择
+                        selected_expression = self.sentiment_analyzer.analyze_sentiment_with_options(text, expressions)
+                        
+                        if selected_expression:
+                            # 直接设置选中的表情名称（PSD使用表情名称而不是数字索引）
+                            component["emotion_index"] = selected_expression
+                            component["force_use"] = True
+                            updated = True
+                            
+                            # 显示更新信息
+                            char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
+                            info = f"角色 {char_full_name} | PSD表情: {selected_expression} |"
+                            self.base_msg += info
+                            print(info)
+                    else:
+                        # 普通组件：原有逻辑，通过情感选择表情
+                        # 获取表情筛选设置
+                        filter_name = component.get("emotion_filter", "全部")
+                        filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
+                        
+                        if not filtered_emotions:
+                            continue
+                        
+                        # 分析情感
+                        sentiment = self.sentiment_analyzer.analyze_sentiment(text)
+                        if not sentiment:
+                            continue
+                        
+                        # 获取该情感对应的表情索引
+                        emotion_indices = CONFIGS.mahoshojo.get(character_name, {}).get(sentiment, [])
+                        available_emotions = [idx for idx in emotion_indices if idx in filtered_emotions]
+                        
+                        if available_emotions:
+                            # 随机选择表情
+                            emotion_index = random.choice(available_emotions)
+                            component["emotion_index"] = emotion_index
+                            component["force_use"] = True
+                            updated = True
+                            
+                            # 显示更新信息
+                            char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
+                            info = f"角色 {char_full_name} | {sentiment}: ({emotion_index}) |"
+                            self.base_msg += info
+                            print(info)
             
             if updated:
                 clear_cache()
@@ -289,6 +320,8 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
                 ufc = component.get("use_fixed_character", False)
                 ufb = component.get("use_fixed_background", False)
                 comp_type = component.get("type")
+
+                # 图层缓存
                 if use_cache and (comp_type not in ["background", "character"]):
                     if not compress_layer:
                         cp_components.append({"use_cache": True})
@@ -297,6 +330,7 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
                 if comp_type in ["background", "character"]:
                     compress_layer = False
 
+                # 处理组件内容
                 if comp_type == "namebox":
                     # 添加角色文本配置
                     if current_character_name in CONFIGS.mahoshojo:
@@ -308,24 +342,28 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
                     
                     # 检查是否有强制使用标记
                     force_use = component.get("force_use", False)
-                    
-                    char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
-                    if force_use and emotion_index is not None:
+                    if force_use:
                         component.pop("force_use", None)
-                    elif ufc and emotion_index:
-                        pass
-                    else:
-                        if component.get("overlay") == "__PSD__":
-                            pose = component.get("pose")
-                            clothing = component.get("clothing")
-                            action = component.get("action")
 
-                            psd_key = (character_name, pose, clothing, action, emotion_index)
-                            if psd_key not in CONFIGS.psd_surface_cache:
-                                CONFIGS.psd_surface_cache[psd_key] = self.compose_psd_chara(*psd_key)
-                            # 把 PIL 图塞进组件，让 DLL 把它当普通位图叠加
-                            component["__psd_image__"] = CONFIGS.psd_surface_cache[psd_key]
-                        else:
+                    char_full_name = CONFIGS.mahoshojo.get(character_name, {}).get("full_name", character_name)
+
+                    if component.get("overlay") == "__PSD__":
+                        pose = component.get("pose")
+                        clothing = component.get("clothing")
+                        action = component.get("action")
+
+                        if not force_use and not ufc:
+                            emo_list = CONFIGS.get_psd_info(character_name)["poses"].get(pose, {}).get("expressions", [])
+                            if emo_list:
+                                emotion_index = random.choice(emo_list)
+                                print(f"随机选择表情: {emotion_index}")
+
+                        psd_key = (character_name, pose, clothing, action, emotion_index)
+                        if psd_key not in CONFIGS.psd_surface_cache:
+                            CONFIGS.psd_surface_cache[psd_key] = self.compose_psd_chara(*psd_key)
+                        component["__psd_image__"] = CONFIGS.psd_surface_cache[psd_key]
+                    else:
+                        if not force_use and not ufc:
                             # 在过滤范围内随机选择表情
                             filter_name = component.get("emotion_filter", "全部")
                             filtered_emotions = CONFIGS.get_filtered_emotions(character_name, filter_name)
@@ -334,11 +372,9 @@ class ManosabaCore(QObject):  # 继承 QObject 以支持信号
                             else:
                                 # 如果没有过滤表情，使用所有表情
                                 emotion_count = CONFIGS.mahoshojo.get(character_name, {}).get("emotion_count", 1)
-                                import traceback
-                                traceback.print_stack()
                                 emotion_index = random.randint(1, emotion_count)
-                        
-                            component["emotion_index"] = emotion_index
+                    
+                    component["emotion_index"] = emotion_index
                     
                     # 收集角色信息
                     character_info = f"角色: {char_full_name}, 表情: ({emotion_index}) |"

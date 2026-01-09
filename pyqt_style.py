@@ -10,7 +10,7 @@ from ui.components import (
 )
 from config import CONFIGS
 from image_processor import clear_cache
-from path_utils import get_available_fonts
+from path_utils import get_available_fonts, get_shader_list
 
 # 组件类型定义
 COMPONENT_TYPES = {
@@ -105,6 +105,7 @@ class ComponentEditor(QGroupBox):
         # 角色选择连接（仅角色组件）
         if self.component_type == "character" and hasattr(self.component_widget, 'combo_character'):
             self.component_widget.combo_character.currentIndexChanged.connect(self._on_character_changed)
+            self.component_widget.combo_poise.currentIndexChanged.connect(self._on_psd_pose_changed_editor)
         
         # 删除按钮连接
         if hasattr(self.component_widget, 'button_delete'):
@@ -118,7 +119,7 @@ class ComponentEditor(QGroupBox):
             self.component_widget.button_move_down.clicked.connect(lambda: self.move_component(1))
     
     def _on_character_changed(self):
-        """角色选择改变时更新表情列表"""
+        """角色选择改变时更新UI"""
         if self.component_type != "character":
             return
         
@@ -129,8 +130,11 @@ class ComponentEditor(QGroupBox):
             # 更新角色名到配置
             self.component_config["character_name"] = character_name
             
-            # 更新表情列表
-            self._update_emotion_list(character_name)
+            # 根据角色类型更新UI
+            if self._is_psd_character(character_name):
+                self._setup_psd_ui_for_editor(character_name)
+            else:
+                self._setup_normal_ui_for_editor()
             
             # 更新表情筛选列表
             if hasattr(self.component_widget, 'combo_emotion_filter'):
@@ -141,16 +145,10 @@ class ComponentEditor(QGroupBox):
         if hasattr(self.component_widget, 'widget_detail'):
             if self.is_expanded:
                 self.component_widget.widget_detail.hide()
-                # self.component_widget.parent().setMaximumHeight(65)
-                # self.component_widget.setMaximumHeight(65)
-                # self.component_widget.setMinimumHeight(0)
                 if hasattr(self.component_widget, 'button_edit'):
                     self.component_widget.button_edit.setText("展开")
             else:
                 self.component_widget.widget_detail.show()
-                # self.component_widget.parent().setMaximumHeight(650)
-                # self.component_widget.setMaximumHeight(16777215)
-                # self.component_widget.setMinimumHeight(0)
                 if hasattr(self.component_widget, 'button_edit'):
                     self.component_widget.button_edit.setText("收起")
             
@@ -242,7 +240,149 @@ class ComponentEditor(QGroupBox):
             self._load_namebox_config()
         elif self.component_type == "text":
             self._load_text_config()
+    
+    def _is_psd_character(self, character_id):
+        """判断是否为PSD角色"""
+        if not character_id:
+            return False
+        return CONFIGS.get_psd_info(character_id) is not None
+
+    def _setup_psd_ui_for_editor(self, character_id):
+        """为PSD角色设置UI"""
+        psd_info = CONFIGS.get_psd_info(character_id)
+        if not psd_info:
+            return
         
+        # 显示姿态控件（必须显示）
+        self.component_widget.label_poise.setVisible(True)
+        self.component_widget.combo_poise.setVisible(True)
+        
+        # 填充姿态列表
+        poses = list(psd_info["poses"].keys())
+        self.component_widget.combo_poise.blockSignals(True)  # 阻止信号
+        self.component_widget.combo_poise.clear()
+        if poses:
+            self.component_widget.combo_poise.addItems(poses)
+            # 设置当前姿态
+            current_pose = self.component_config.get("pose", poses[0])
+            index = self.component_widget.combo_poise.findText(current_pose)
+            if index >= 0:
+                self.component_widget.combo_poise.setCurrentIndex(index)
+        self.component_widget.combo_poise.blockSignals(False)  # 恢复信号
+        
+        # 初始更新一次（会连带更新服装、动作和表情）
+        self._on_psd_pose_changed_editor()
+
+    def _setup_normal_ui_for_editor(self):
+        """为普通角色设置UI"""
+        # 隐藏所有PSD相关控件
+        for widget in [self.component_widget.label_poise, self.component_widget.combo_poise,
+                    self.component_widget.label_clothes, self.component_widget.combo_clothes,
+                    self.component_widget.label_action, self.component_widget.combo_action]:
+            widget.setVisible(False)
+        
+        # 恢复普通角色的表情列表
+        character_id = self.component_config.get("character_name", "")
+        if hasattr(self.component_widget, 'combo_emotion') and character_id:
+            self._update_emotion_list(character_id)
+
+    def _on_psd_pose_changed_editor(self):
+        """PSD姿态改变时统一更新服装、动作和表情"""
+        character_id = self.component_config.get("character_name")
+        if not character_id:
+            return
+        
+        psd_info = CONFIGS.get_psd_info(character_id)
+        if not psd_info:
+            return
+        
+        pose = self.component_widget.combo_poise.currentText()
+        if not pose or pose not in psd_info["poses"]:
+            # 隐藏服装和动作控件
+            self.component_widget.label_clothes.setVisible(False)
+            self.component_widget.combo_clothes.setVisible(False)
+            self.component_widget.label_action.setVisible(False)
+            self.component_widget.combo_action.setVisible(False)
+            return
+        
+        pose_data = psd_info["poses"][pose]
+        
+        # ========== 更新服装 ==========
+        clothes = list(pose_data.get("clothes", {}).keys())
+        self.component_widget.combo_clothes.clear()
+        
+        has_clothes = len(clothes) > 0
+        self.component_widget.label_clothes.setVisible(has_clothes)
+        self.component_widget.combo_clothes.setVisible(has_clothes)
+        
+        if has_clothes:
+            self.component_widget.combo_clothes.addItems(clothes)
+            # 恢复之前选择的服装
+            current_clothing = self.component_config.get("clothing", "")
+            if current_clothing and current_clothing in clothes:
+                index = self.component_widget.combo_clothes.findText(current_clothing)
+                if index >= 0:
+                    self.component_widget.combo_clothes.setCurrentIndex(index)
+            else:
+                # 默认选择第一个
+                self.component_config["clothing"] = clothes[0]
+        
+        # ========== 更新动作 ==========
+        actions = set()
+        for clothing_list in pose_data.get("clothes", {}).values():
+            actions.update(clothing_list)
+        
+        actions = sorted(list(actions))
+        self.component_widget.combo_action.clear()
+        
+        has_actions = len(actions) > 0
+        self.component_widget.label_action.setVisible(has_actions)
+        self.component_widget.combo_action.setVisible(has_actions)
+        
+        if has_actions:
+            self.component_widget.combo_action.addItems(actions)
+            # 恢复之前选择的动作
+            current_action = self.component_config.get("action", "")
+            if current_action and current_action in actions:
+                index = self.component_widget.combo_action.findText(current_action)
+                if index >= 0:
+                    self.component_widget.combo_action.setCurrentIndex(index)
+            else:
+                # 默认选择第一个
+                self.component_config["action"] = actions[0]
+        
+        # ========== 更新表情 ==========
+        self._update_psd_emotion_list(character_id)
+
+    def _update_psd_emotion_list(self, character_id):
+        """更新PSD角色的表情列表"""
+        psd_info = CONFIGS.get_psd_info(character_id)
+        if not psd_info:
+            return
+        
+        pose = self.component_widget.combo_poise.currentText()
+        if not pose:
+            self.component_widget.combo_emotion.clear()
+            self.component_widget.combo_emotion.addItem("无可用表情")
+            return
+        
+        expressions = psd_info["poses"].get(pose, {}).get("expressions", [])
+        self.component_widget.combo_emotion.clear()
+        
+        if expressions:
+            self.component_widget.combo_emotion.addItems(expressions)
+            # 恢复之前选择的表情
+            current_emotion = self.component_config.get("emotion_index", "")
+            if current_emotion and current_emotion in expressions:
+                index = self.component_widget.combo_emotion.findText(current_emotion)
+                if index >= 0:
+                    self.component_widget.combo_emotion.setCurrentIndex(index)
+            else:
+                # 默认选择第一个
+                self.component_config["emotion_index"] = expressions[0]
+        else:
+            self.component_widget.combo_emotion.addItem("无可用表情")
+
     def _load_character_config(self):
         """加载角色组件配置"""
         if not hasattr(self.component_widget, 'combo_character'):
@@ -273,7 +413,13 @@ class ComponentEditor(QGroupBox):
                 character_name = CONFIGS.character_list[0]
                 self.component_config["character_name"] = character_name
         
-        # 初始化表情筛选下拉框
+        # 根据角色类型设置UI
+        if self._is_psd_character(character_name):
+            self._setup_psd_ui_for_editor(character_name)
+        else:
+            self._setup_normal_ui_for_editor()
+        
+        # 初始化表情筛选下拉框（如果需要）
         if hasattr(self.component_widget, 'combo_emotion_filter'):
             self.component_widget.combo_emotion_filter.clear()
             emotion_filters, _ = CONFIGS.get_emotion_filter_options(character_name if character_name else None)
@@ -286,20 +432,19 @@ class ComponentEditor(QGroupBox):
         
         # 初始化表情选择下拉框
         if hasattr(self.component_widget, 'combo_emotion'):
-            self.component_widget.combo_emotion.clear()
-            # 填充表情列表
-            if character_name:
-                char_meta = CONFIGS.mahoshojo.get(character_name, {})
-                emotion_count = char_meta.get("emotion_count", 9)
-                for i in range(1, emotion_count + 1):
-                    self.component_widget.combo_emotion.addItem(f"表情 {i}", i)
+            # 普通角色的表情列表会在 _setup_normal_ui_for_editor 中初始化
+            # PSD角色的表情列表会在 _setup_psd_ui_for_editor 中初始化
             
             # 设置当前表情
             emotion_index = self.component_config.get("emotion_index", 1)
-            index = self.component_widget.combo_emotion.findData(emotion_index)
+            if isinstance(emotion_index, str):  # PSD角色使用的是表情名称
+                index = self.component_widget.combo_emotion.findText(emotion_index)
+            else:  # 普通角色使用的是表情编号
+                index = self.component_widget.combo_emotion.findData(emotion_index)
+            
             if index >= 0:
                 self.component_widget.combo_emotion.setCurrentIndex(index)
-    
+
     def _load_background_config(self):
         """加载背景组件配置"""
         # 使用固定背景
@@ -331,9 +476,33 @@ class ComponentEditor(QGroupBox):
     def _load_extra_config(self):
         """加载图片组件配置"""
         overlay = self.component_config.get("overlay", "")
-        if overlay and hasattr(self.component_widget, 'combo_image'):
-            self.component_widget.combo_image.addItem(overlay, overlay)
-            self.component_widget.combo_image.setCurrentIndex(0)
+        shader_files = get_shader_list()
+        
+        if hasattr(self.component_widget, 'combo_image'):
+            # 清空现有选项
+            self.component_widget.combo_image.clear()
+            
+            # 添加"无"选项
+            self.component_widget.combo_image.addItem("无", "")
+            
+            # 添加shader文件列表
+            for shader_file in shader_files:
+                self.component_widget.combo_image.addItem(shader_file, shader_file)
+            
+            # 如果当前有overlay且不在shader列表中，添加它（可能是用户手动输入或其他来源）
+            if overlay and overlay not in shader_files:
+                self.component_widget.combo_image.addItem(overlay, overlay)
+            
+            # 设置当前值
+            if overlay:
+                index = self.component_widget.combo_image.findData(overlay)
+                if index >= 0:
+                    self.component_widget.combo_image.setCurrentIndex(index)
+            
+            # 连接信号（如果尚未连接）
+            # if not hasattr(self, '_extra_image_connected'):
+            #     self.component_widget.combo_image.currentIndexChanged.connect(self._on_extra_image_changed)
+            #     self._extra_image_connected = True
     
     def _load_namebox_config(self):
         """加载名字框组件配置"""
@@ -477,23 +646,53 @@ class ComponentEditor(QGroupBox):
     
     def _get_character_config(self, config):
         """获取角色组件配置"""
+        # 保存角色名
+        if hasattr(self.component_widget, 'combo_character'):
+            character_name = self.component_widget.combo_character.currentData()
+            if character_name:
+                config["character_name"] = character_name
+        
         # 使用固定角色（默认是False，只保存True）
         if hasattr(self.component_widget, 'checkbox_fixed_emotion'):
             use_fixed = self.component_widget.checkbox_fixed_emotion.isChecked()
-            
-            # 保存角色名
-            if hasattr(self.component_widget, 'combo_character'):
-                character_name = self.component_widget.combo_character.currentData()
-                if character_name:
-                    config["character_name"] = character_name
-            
             if use_fixed:
                 config["use_fixed_character"] = use_fixed
-                # 只有使用固定角色时，才保存表情索引（默认是1，只保存非1的值）
-                if hasattr(self.component_widget, 'combo_emotion'):
-                    emotion_index = self.component_widget.combo_emotion.currentData()
-                    if emotion_index and emotion_index != 1:
-                        config["emotion_index"] = emotion_index
+        
+        # 检查是否为PSD角色
+        is_psd = self._is_psd_character(character_name)
+        
+        if is_psd:
+            # PSD角色：保存姿态、服装、动作
+            if hasattr(self.component_widget, 'combo_poise'):
+                pose = self.component_widget.combo_poise.currentText()
+                if pose:
+                    config["pose"] = pose
+            
+            if hasattr(self.component_widget, 'combo_clothes'):
+                clothing = self.component_widget.combo_clothes.currentText()
+                if clothing:
+                    config["clothing"] = clothing
+            
+            if hasattr(self.component_widget, 'combo_action'):
+                action = self.component_widget.combo_action.currentText()
+                if action:
+                    config["action"] = action
+            
+            # PSD角色：保存表情名称（字符串）
+            if hasattr(self.component_widget, 'combo_emotion'):
+                emotion_text = self.component_widget.combo_emotion.currentText()
+                if emotion_text and emotion_text != "无可用表情":
+                    config["emotion_index"] = emotion_text
+            
+            # 标记为PSD组件
+            config["overlay"] = "__PSD__"
+        
+        else:
+            # 普通角色：只保存表情索引（数字）
+            if hasattr(self.component_widget, 'combo_emotion') and use_fixed:
+                emotion_index = self.component_widget.combo_emotion.currentData()
+                if emotion_index and emotion_index != 1:  # 默认是1，只保存非1的值
+                    config["emotion_index"] = emotion_index
     
     def _get_background_config(self, config):
         """获取背景组件配置"""

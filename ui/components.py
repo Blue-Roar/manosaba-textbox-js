@@ -149,8 +149,10 @@ class CharacterComponent(QWidget):
         
         self.combo_character = QComboBox(self.widget_line2)
         self.combo_character.setObjectName(u"combo_character")
-        sizePolicy2.setHeightForWidth(self.combo_character.sizePolicy().hasHeightForWidth())
-        self.combo_character.setSizePolicy(sizePolicy2)
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+        sizePolicy3.setHorizontalStretch(1)
+        sizePolicy3.setHeightForWidth(self.combo_character.sizePolicy().hasHeightForWidth())
+        self.combo_character.setSizePolicy(sizePolicy3)
         self.combo_character.setMinimumSize(QSize(60, 30))
         
         self.horizontalLayout_line2.addWidget(self.combo_character)

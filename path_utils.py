@@ -94,3 +94,23 @@ def get_background_list() -> list:
     except Exception as e:
         print(f"获取背景文件列表失败: {e}")
         return []
+
+def get_shader_list() -> list:
+    """获取shader文件列表"""
+    try:
+        shader_dir = get_resource_path(os.path.join("assets", "shader"))
+        if shader_dir and os.path.exists(shader_dir):
+            # 获取所有图片文件
+            image_extensions = ['.webp', '.png', '.jpg', '.jpeg', '.bmp', '.gif']
+            shader_files = []
+            for f in os.listdir(shader_dir):
+                # 检查是否为图片文件
+                if any(f.lower().endswith(ext) for ext in image_extensions):
+                    shader_files.append(f)
+            return sorted(shader_files)
+        else:
+            print(f"警告：shader图片目录不存在: {shader_dir}")
+            return []
+    except Exception as e:
+        print(f"获取shader文件列表失败: {e}")
+        return []

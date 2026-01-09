@@ -147,14 +147,14 @@ class EnhancedImageLoaderDLL:
                     external_image_pitch = pitch
                     
                     # 在JSON中标记使用外部图像数据
-                    comp["use_external_image"] = True
+                    # comp["use_external_image"] = True
                     
                     # 从组件中移除图像数据相关字段，因为将通过参数传递
-                    comp.pop("image_width", None)
-                    comp.pop("image_height", None)
-                    comp.pop("image_pitch", None)
-                    comp.pop("image_bytes", None)
-                    comp.pop("image_data_ptr", None)
+                    # comp.pop("image_width", None)
+                    # comp.pop("image_height", None)
+                    # comp.pop("image_pitch", None)
+                    # comp.pop("image_bytes", None)
+                    # comp.pop("image_data_ptr", None)
                     
                     break  # 目前只支持一个外部图像数据
         
