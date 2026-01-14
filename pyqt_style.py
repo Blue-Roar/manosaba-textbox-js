@@ -11,6 +11,7 @@ from ui.components import (
 from config import CONFIGS
 from image_processor import clear_cache
 from path_utils import get_available_fonts, get_shader_list
+from utils.psd_utils import get_pose_options, get_clothing_options, get_action_options, get_expression_options
 
 # 组件类型定义
 COMPONENT_TYPES = {
@@ -106,6 +107,10 @@ class ComponentEditor(QGroupBox):
         if self.component_type == "character" and hasattr(self.component_widget, 'combo_character'):
             self.component_widget.combo_character.currentIndexChanged.connect(self._on_character_changed)
             self.component_widget.combo_poise.currentIndexChanged.connect(self._on_psd_pose_changed_editor)
+            
+            # 添加服装下拉框的信号连接
+            if hasattr(self.component_widget, 'combo_clothes'):
+                self.component_widget.combo_clothes.currentIndexChanged.connect(self._on_psd_clothing_changed_editor)
         
         # 删除按钮连接
         if hasattr(self.component_widget, 'button_delete'):
@@ -117,7 +122,7 @@ class ComponentEditor(QGroupBox):
         
         if hasattr(self.component_widget, 'button_move_down'):
             self.component_widget.button_move_down.clicked.connect(lambda: self.move_component(1))
-    
+
     def _on_character_changed(self):
         """角色选择改变时更新UI"""
         if self.component_type != "character":
@@ -140,6 +145,48 @@ class ComponentEditor(QGroupBox):
             if hasattr(self.component_widget, 'combo_emotion_filter'):
                 self._update_emotion_filter_list(character_name)
 
+    def _on_psd_clothing_changed_editor(self):
+        """PSD服装改变时更新动作和表情"""
+        character_id = self.component_config.get("character_name")
+        if not character_id:
+            return
+        
+        pose = self.component_widget.combo_poise.currentText()
+        if not pose or pose == "无可用姿态":
+            return
+        
+        # 获取当前服装
+        current_clothing = self.component_widget.combo_clothes.currentText()
+        
+        # ========== 更新动作 ==========
+        actions = get_action_options(character_id, pose, current_clothing)
+        
+        self.component_widget.combo_action.blockSignals(True)
+        self.component_widget.combo_action.clear()
+        
+        has_action = bool(actions)
+        if has_action:
+            self.component_widget.combo_action.addItems(actions)
+            
+            # 恢复之前选择的动作
+            current_action = self.component_config.get("action", "")
+            index = 0
+            if current_action and current_action in actions:
+                index = self.component_widget.combo_action.findText(current_action)
+            
+            index = index if index >= 0 else 0
+            self.component_widget.combo_action.setCurrentIndex(index)
+            self.component_config["action"] = actions[index]
+            
+        # 控制控件可用性
+        self.component_widget.label_action.setVisible(has_action)
+        self.component_widget.combo_action.setVisible(has_action)
+    
+        self.component_widget.combo_action.blockSignals(False)
+        
+        # ========== 更新表情 ==========
+        self._update_psd_emotion_list(character_id)
+        
     def _toggle_expand(self):
         """切换展开/收起状态"""
         if hasattr(self.component_widget, 'widget_detail'):
@@ -249,25 +296,23 @@ class ComponentEditor(QGroupBox):
 
     def _setup_psd_ui_for_editor(self, character_id):
         """为PSD角色设置UI"""
-        psd_info = CONFIGS.get_psd_info(character_id)
-        if not psd_info:
-            return
-        
-        # 显示姿态控件（必须显示）
+        # 显示姿态控件
         self.component_widget.label_poise.setVisible(True)
         self.component_widget.combo_poise.setVisible(True)
         
-        # 填充姿态列表
-        poses = list(psd_info["poses"].keys())
+        # 使用 psd_utils 获取姿态选项
+        poses = get_pose_options(character_id)
         self.component_widget.combo_poise.blockSignals(True)  # 阻止信号
         self.component_widget.combo_poise.clear()
+        
         if poses:
             self.component_widget.combo_poise.addItems(poses)
             # 设置当前姿态
             current_pose = self.component_config.get("pose", poses[0])
             index = self.component_widget.combo_poise.findText(current_pose)
-            if index >= 0:
-                self.component_widget.combo_poise.setCurrentIndex(index)
+            index = index if index >= 0 else 0
+            self.component_widget.combo_poise.setCurrentIndex(index)
+        
         self.component_widget.combo_poise.blockSignals(False)  # 恢复信号
         
         # 初始更新一次（会连带更新服装、动作和表情）
@@ -292,40 +337,29 @@ class ComponentEditor(QGroupBox):
         if not character_id:
             return
         
-        psd_info = CONFIGS.get_psd_info(character_id)
-        if not psd_info:
-            return
-        
         pose = self.component_widget.combo_poise.currentText()
-        if not pose or pose not in psd_info["poses"]:
+        has_pose = bool(pose and pose != "无可用姿态")
+
+        self.component_widget.label_clothes.setVisible(has_pose)
+        self.component_widget.combo_clothes.setVisible(has_pose)
+
+        if not has_pose:
             # 隐藏服装和动作控件
-            self.component_widget.label_clothes.setVisible(False)
-            self.component_widget.combo_clothes.setVisible(False)
             self.component_widget.label_action.setVisible(False)
             self.component_widget.combo_action.setVisible(False)
+            self.component_widget.combo_emotion.clear()
+            self.component_widget.combo_emotion.addItem("无可用表情")
             return
         
-        pose_data = psd_info["poses"][pose]
-        
         # ========== 更新服装 ==========
-        # 根据clothes_source从正确位置获取服装列表
-        if pose_data.get("clothes_source") == "pose":
-            # 结构B：服装在姿态内
-            clothes = list(pose_data.get("clothes", {}).keys())
-        elif pose_data.get("clothes_source") == "global" and psd_info.get("global_clothes"):
-            # 结构A：使用全局服装
-            clothes = list(psd_info["global_clothes"].keys())
-        else:
-            clothes = []
+        clothes = get_clothing_options(character_id, pose)
         
         self.component_widget.combo_clothes.clear()
         
-        has_clothes = len(clothes) > 0
-        self.component_widget.label_clothes.setVisible(has_clothes)
-        self.component_widget.combo_clothes.setVisible(has_clothes)
-        
-        if has_clothes:
+        if clothes:
+            self.component_widget.combo_clothes.blockSignals(True)
             self.component_widget.combo_clothes.addItems(clothes)
+            
             # 恢复之前选择的服装
             current_clothing = self.component_config.get("clothing", "")
             if current_clothing and current_clothing in clothes:
@@ -334,70 +368,77 @@ class ComponentEditor(QGroupBox):
                     self.component_widget.combo_clothes.setCurrentIndex(index)
             else:
                 # 默认选择第一个
-                self.component_config["clothing"] = clothes[0]
+                self.component_widget.combo_clothes.setCurrentIndex(0)
+                if clothes:
+                    current_clothing = clothes[0]
+                    self.component_config["clothing"] = current_clothing
+            
+            self.component_widget.combo_clothes.blockSignals(False)
+            
+            # 显示服装控件
+            self.component_widget.label_clothes.setVisible(True)
+            self.component_widget.combo_clothes.setVisible(True)
         
-        # ========== 更新动作 ==========
-        # 根据actions_source从正确位置获取动作列表
-        actions = set()
-        
-        if pose_data.get("actions_source") == "pose":
-            # 结构B：动作在服装组内或姿态下
-            for clothing_list in pose_data.get("clothes", {}).values():
-                actions.update(clothing_list)
-        elif pose_data.get("actions_source") == "global" and psd_info.get("global_actions"):
-            # 结构A：使用全局动作
-            actions.update(psd_info["global_actions"])
-        
-        actions = sorted(list(actions))
-        self.component_widget.combo_action.clear()
-        
-        has_actions = len(actions) > 0
-        self.component_widget.label_action.setVisible(has_actions)
-        self.component_widget.combo_action.setVisible(has_actions)
-        
-        if has_actions:
-            self.component_widget.combo_action.addItems(actions)
-            # 恢复之前选择的动作
-            current_action = self.component_config.get("action", "")
-            if current_action and current_action in actions:
-                index = self.component_widget.combo_action.findText(current_action)
-                if index >= 0:
-                    self.component_widget.combo_action.setCurrentIndex(index)
-            else:
-                # 默认选择第一个
-                self.component_config["action"] = actions[0]
-        
-        # ========== 更新表情 ==========
-        self._update_psd_emotion_list(character_id)
+        self._on_psd_clothing_changed_editor()
 
     def _update_psd_emotion_list(self, character_id):
         """更新PSD角色的表情列表"""
-        psd_info = CONFIGS.get_psd_info(character_id)
-        if not psd_info:
-            return
-        
         pose = self.component_widget.combo_poise.currentText()
-        if not pose:
+        if not pose or pose == "无可用姿态":
             self.component_widget.combo_emotion.clear()
             self.component_widget.combo_emotion.addItem("无可用表情")
             return
         
-        expressions = psd_info["poses"].get(pose, {}).get("expressions", [])
+        # 获取当前服装
+        current_clothing = self.component_widget.combo_clothes.currentText() if self.component_widget.combo_clothes.isVisible() else None
+        
+        # 使用 psd_utils 获取表情选项
+        filters, emo_list = get_expression_options(character_id, pose, current_clothing)
+        
+        self.component_widget.combo_emotion.blockSignals(True)
         self.component_widget.combo_emotion.clear()
         
-        if expressions:
-            self.component_widget.combo_emotion.addItems(expressions)
-            # 恢复之前选择的表情
-            current_emotion = self.component_config.get("emotion_index", "")
-            if current_emotion and current_emotion in expressions:
-                index = self.component_widget.combo_emotion.findText(current_emotion)
-                if index >= 0:
-                    self.component_widget.combo_emotion.setCurrentIndex(index)
+        # 如果有表情筛选器，需要特殊处理
+        if filters and "全部" in filters:
+            # 获取所有表情
+            all_emotions = emo_list.get("全部", [])
+            if all_emotions:
+                self.component_widget.combo_emotion.addItems(all_emotions)
+                
+                # 恢复之前选择的表情
+                current_emotion = self.component_config.get("emotion_index", "")
+                if current_emotion and current_emotion in all_emotions:
+                    index = self.component_widget.combo_emotion.findText(current_emotion)
+                    if index >= 0:
+                        self.component_widget.combo_emotion.setCurrentIndex(index)
+                else:
+                    # 默认选择第一个
+                    self.component_widget.combo_emotion.setCurrentIndex(0)
+                    if all_emotions:
+                        self.component_config["emotion_index"] = all_emotions[0]
             else:
-                # 默认选择第一个
-                self.component_config["emotion_index"] = expressions[0]
+                self.component_widget.combo_emotion.addItem("无可用表情")
         else:
-            self.component_widget.combo_emotion.addItem("无可用表情")
+            # 直接使用获取到的表情列表
+            expressions = emo_list.get("全部", []) if emo_list else []
+            if expressions:
+                self.component_widget.combo_emotion.addItems(expressions)
+                
+                # 恢复之前选择的表情
+                current_emotion = self.component_config.get("emotion_index", "")
+                if current_emotion and current_emotion in expressions:
+                    index = self.component_widget.combo_emotion.findText(current_emotion)
+                    if index >= 0:
+                        self.component_widget.combo_emotion.setCurrentIndex(index)
+                else:
+                    # 默认选择第一个
+                    self.component_widget.combo_emotion.setCurrentIndex(0)
+                    if expressions:
+                        self.component_config["emotion_index"] = expressions[0]
+            else:
+                self.component_widget.combo_emotion.addItem("无可用表情")
+        
+        self.component_widget.combo_emotion.blockSignals(False)
 
     def _load_character_config(self):
         """加载角色组件配置"""

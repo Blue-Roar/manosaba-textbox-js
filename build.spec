@@ -54,7 +54,6 @@ except:
 # 排除不需要的库 - 增加更多排除项以减小体积
 excludes = [
     'matplotlib',
-    'numpy',
     'pandas',
     'scipy',
     'test',

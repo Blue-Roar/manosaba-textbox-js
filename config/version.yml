@@ -2,10 +2,16 @@
 # 版本信息配置
 
 # 当前版本号
-version: "2.1.0"
+version: "2.2.8"
 
 # 版本历史 记录的是exe的更新，并非代码的更新记录
 history:
+  - version: "2.2.8"
+    date: "2026-1-14"
+    description:
+      - "支持更为宽松的psd的图层结构"
+      - "小幅优化了psd合成速度"
+      - "添加了绫地宁宁"
   - version: "2.1.0"
     date: "2026-1-9"
     description:

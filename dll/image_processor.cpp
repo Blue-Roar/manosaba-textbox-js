@@ -2175,12 +2175,9 @@ bool ImageLoaderManager::DrawCharacterComponent(SDL_Surface *target1, cJSON *com
 
   // 使用工具函数计算位置
   const char *align = GetJsonString(comp_obj, "align", "top-left");
-  int offset_x = static_cast<int>(GetJsonNumber(comp_obj, "offset_x", 0));
-  +static_cast<int>(GetJsonNumber(comp_obj, "offset_x1", 0));
-  ;
-  int offset_y = static_cast<int>(GetJsonNumber(comp_obj, "offset_y", 0));
-  +static_cast<int>(GetJsonNumber(comp_obj, "offset_y1", 0));
-  ;
+  int offset_x = static_cast<int>(GetJsonNumber(comp_obj, "offset_x", 0)) + static_cast<int>(GetJsonNumber(comp_obj, "offset_x1", 0));
+
+  int offset_y = static_cast<int>(GetJsonNumber(comp_obj, "offset_y", 0)) + static_cast<int>(GetJsonNumber(comp_obj, "offset_y1", 0));
 
   SDL_Rect pos = utils::CalculatePosition(align, offset_x, offset_y, target1->w, target1->h, final_surface->w, final_surface->h);
 

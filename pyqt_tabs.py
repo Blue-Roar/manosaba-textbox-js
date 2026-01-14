@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import Signal
 from ui.components import Ui_CharaCfg
 from config import CONFIGS
-from utils.psd_utils import get_pose_options, get_emotion_filter_emotion_options, get_clothing_action_options
+from utils.psd_utils import get_pose_options, get_clothing_options, get_action_options, get_expression_options
 
 class BackgroundTabWidget(QWidget):
     """背景标签页组件 - 使用UI设计器中的布局"""
@@ -213,9 +213,6 @@ class CharacterTabWidget(QWidget):
         self._init_from_config()
         self._connect_signals()
     
-    def _psd_info(self):
-        return CONFIGS.get_psd_info(self.current_character_id)
-        
     def _setup_psd_ui(self):
         """设置PSD角色UI"""
         config = self._component_config
@@ -225,13 +222,13 @@ class CharacterTabWidget(QWidget):
         self.ui.combo_poise_select.clear()
         self.ui.combo_poise_select.addItems(poses)
         
-        current_pose = config.get("pose", poses[0])
+        current_pose = config.get("pose", poses[0] if poses else "")
         self.ui.combo_poise_select.setCurrentText(current_pose)
         
         # 服装和动作
         self._update_clothing_action()
         
-        # 修复：调用新的合并方法
+        # 表情筛选器和表情列表
         self._update_emotion_filter_and_combo()
         
         # 显示/隐藏控件
@@ -257,32 +254,52 @@ class CharacterTabWidget(QWidget):
         config = self._component_config
         pose = self.ui.combo_poise_select.currentText()
         
-        # 获取服装和动作
-        clothes, actions = get_clothing_action_options(self.current_character_id, pose)
+        if not pose:
+            return
         
-        # 更新UI
-        for combo, items, label in [
-            (self.ui.combo_clothes_select, clothes, self.ui.label_clothes_select),
-            (self.ui.combo_action_select, actions, self.ui.label_action_select)
-        ]:
-            combo.blockSignals(True)
-            combo.clear()
-            vaild_items = bool(items)
-            if vaild_items:
-                combo.addItems(items)
-            label.setVisible(vaild_items)
-            combo.setVisible(vaild_items)
-
-            combo.blockSignals(False)
+        # 使用新的函数获取服装选项
+        clothes = get_clothing_options(self.current_character_id, pose)
         
-        # 恢复选中值
-        if clothes:
-            clothing = config.get("clothing", clothes[0])
-            self.ui.combo_clothes_select.setCurrentText(clothing)
+        # 获取当前服装（用于后续获取动作）
+        current_clothing = config.get("clothing", clothes[0] if clothes else "")
         
-        if actions:
-            action = config.get("action", actions[0])
-            self.ui.combo_action_select.setCurrentText(action)
+        # 使用新的函数获取动作选项
+        actions = get_action_options(self.current_character_id, pose, current_clothing)
+        
+        # 更新服装UI
+        self.ui.combo_clothes_select.blockSignals(True)
+        self.ui.combo_clothes_select.clear()
+        has_clothes = bool(clothes)
+        self.ui.label_clothes_select.setVisible(has_clothes)
+        self.ui.combo_clothes_select.setVisible(has_clothes)
+        
+        if has_clothes:
+            self.ui.combo_clothes_select.addItems(clothes)
+            # 恢复选中值
+            if current_clothing and current_clothing in clothes:
+                self.ui.combo_clothes_select.setCurrentText(current_clothing)
+            elif clothes:
+                self.ui.combo_clothes_select.setCurrentIndex(0)
+        
+        self.ui.combo_clothes_select.blockSignals(False)
+        
+        # 更新动作UI
+        self.ui.combo_action_select.blockSignals(True)
+        self.ui.combo_action_select.clear()
+        has_actions = bool(actions)
+        self.ui.label_action_select.setVisible(has_actions)
+        self.ui.combo_action_select.setVisible(has_actions)
+        
+        if has_actions:
+            self.ui.combo_action_select.addItems(actions)
+            # 恢复选中值
+            current_action = config.get("action", actions[0] if actions else "")
+            if current_action and current_action in actions:
+                self.ui.combo_action_select.setCurrentText(current_action)
+            elif actions:
+                self.ui.combo_action_select.setCurrentIndex(0)
+        
+        self.ui.combo_action_select.blockSignals(False)
     
     def get_available_emotions(self):
         """
@@ -316,12 +333,13 @@ class CharacterTabWidget(QWidget):
         if psd_info:
             pose = self.ui.combo_poise_select.currentText()
             clothing = self.ui.combo_clothes_select.currentText()
-            emo_list = {}
             if pose and pose in psd_info["poses"]:
-                filters, emo_list = get_emotion_filter_emotion_options(
+                # 使用新的函数获取表情选项
+                filters, emo_list = get_expression_options(
                     self.current_character_id, pose, clothing
                 )
-            filter_name = filter_name if (filter_name in filters) or filter_name in emo_list.get("全部") else "全部"
+                if filter_name in emo_list:
+                    return emo_list.get(filter_name, [])
         else:
             emo_list = CONFIGS.mahoshojo.get(self.current_character_id, {}).get("emo", {})
             
@@ -343,7 +361,7 @@ class CharacterTabWidget(QWidget):
             psd_info = CONFIGS.get_psd_info(self.current_character_id)
             
             # 保存当前选中的值
-            saved_filter = self.ui.combo_emotion_filter.currentText()  or  "全部"
+            saved_filter = self.ui.combo_emotion_filter.currentText() or "全部"
             
             # 清空控件
             self.ui.combo_emotion_filter.clear()
@@ -359,14 +377,15 @@ class CharacterTabWidget(QWidget):
                 clothing = self.ui.combo_clothes_select.currentText()
                 
                 if pose and pose in psd_info["poses"]:
-                    filters, emo_list = get_emotion_filter_emotion_options(
+                    # 使用新的函数获取表情选项
+                    filters, emo_list = get_expression_options(
                         self.current_character_id, pose, clothing
                     )
                     # 更新筛选器UI（只在有多个筛选选项时显示）
                     self.ui.combo_emotion_filter.blockSignals(True)
                     
                     # 设置可见性
-                    show_filter = bool(filters and len(filters)>1)
+                    show_filter = bool(filters and len(filters) > 1)
                     saved_filter = saved_filter if saved_filter in filters else "全部"
                     if show_filter:
                         self.ui.combo_emotion_filter.addItems(filters)
@@ -414,7 +433,12 @@ class CharacterTabWidget(QWidget):
             self.ui.combo_emotion_select.blockSignals(True)
             if emotions:
                 self.ui.combo_emotion_select.addItems(emotions)
-                self.ui.combo_emotion_select.setCurrentIndex(0)
+                # 恢复之前的选择
+                saved_emotion = self._component_config.get("emotion_index", "")
+                if isinstance(saved_emotion, str) and saved_emotion in emotions:
+                    self.ui.combo_emotion_select.setCurrentText(saved_emotion)
+                else:
+                    self.ui.combo_emotion_select.setCurrentIndex(0)
             else:
                 self.ui.combo_emotion_select.addItem("无可用表情")
             
@@ -519,10 +543,31 @@ class CharacterTabWidget(QWidget):
         
         # 根据变化类型决定刷新哪些子控件
         if changed_option == "pose":
-            self._update_clothing_action_from_pose()
+            self._update_clothing_action()
             self._update_emotion_filter_and_combo()
         elif changed_option == "clothing":
-            self._update_action_from_clothing()
+            # 服装改变时，需要更新动作和表情
+            pose = self.ui.combo_poise_select.currentText()
+            clothing = self.ui.combo_clothes_select.currentText()
+            
+            # 更新动作
+            actions = get_action_options(self.current_character_id, pose, clothing)
+            self.ui.combo_action_select.blockSignals(True)
+            self.ui.combo_action_select.clear()
+            has_actions = bool(actions)
+            self.ui.label_action_select.setVisible(has_actions)
+            self.ui.combo_action_select.setVisible(has_actions)
+            
+            if has_actions:
+                self.ui.combo_action_select.addItems(actions)
+                # 恢复选择
+                if saved_values["action"] in actions:
+                    self.ui.combo_action_select.setCurrentText(saved_values["action"])
+                elif actions:
+                    self.ui.combo_action_select.setCurrentIndex(0)
+            
+            self.ui.combo_action_select.blockSignals(False)
+            
             self._update_emotion_filter_and_combo() 
         
         # 恢复之前的选择（如果在新列表中还存在）
@@ -533,90 +578,6 @@ class CharacterTabWidget(QWidget):
         # 更新PSD组件配置
         print("emit 1")
         self.config_changed.emit()
-
-    def _update_clothing_action_from_pose(self):
-        """当姿态改变时，重新加载服装和动作列表"""
-        if not self.current_character_id or not self._psd_info():
-            return
-        
-        pose = self.ui.combo_poise_select.currentText()
-        psd_info = self._psd_info()
-        
-        if not pose or pose not in psd_info["poses"]:
-            # 隐藏所有控件
-            self.ui.label_clothes_select.setVisible(False)
-            self.ui.combo_clothes_select.setVisible(False)
-            self.ui.label_action_select.setVisible(False)
-            self.ui.combo_action_select.setVisible(False)
-            return
-        
-        pose_data = psd_info["poses"][pose]
-        
-        # ========== 更新服装 ==========
-        # 根据clothes_source从正确位置获取服装列表
-        if pose_data.get("clothes_source") == "pose":
-            # 结构B：服装在姿态内
-            clothes = list(pose_data.get("clothes", {}).keys())
-        elif pose_data.get("clothes_source") == "global" and psd_info.get("global_clothes"):
-            # 结构A：使用全局服装
-            clothes = list(psd_info["global_clothes"].keys())
-        else:
-            clothes = []
-        
-        has_clothes = len(clothes) > 0
-        
-        self.ui.combo_clothes_select.blockSignals(True)
-        self.ui.combo_clothes_select.clear()
-        self.ui.label_clothes_select.setVisible(has_clothes)
-        self.ui.combo_clothes_select.setVisible(has_clothes)
-        
-        if has_clothes:
-            self.ui.combo_clothes_select.addItems(clothes)
-        self.ui.combo_clothes_select.blockSignals(False)
-        
-        # ========== 更新动作（先根据姿态获取） ==========
-        self._update_action_from_clothing()
-
-    def _update_action_from_clothing(self):
-        """根据当前服装更新动作列表（如果服装没变化，则根据姿态获取所有动作）"""
-        if not self.current_character_id or not self._psd_info():
-            return
-        
-        pose = self.ui.combo_poise_select.currentText()
-        clothing = self.ui.combo_clothes_select.currentText()
-        psd_info = self._psd_info()
-        
-        if not pose or pose not in psd_info["poses"]:
-            return
-        
-        pose_data = psd_info["poses"][pose]
-        actions = set()
-        
-        # 根据actions_source从正确位置获取动作列表
-        if pose_data.get("actions_source") == "pose":
-            # 结构B：动作在姿态下
-            if clothing and pose_data.get("clothes_source") == "pose":
-                # 如果有当前服装，获取该服装下的动作
-                actions.update(pose_data.get("clothes", {}).get(clothing, []))
-            else:
-                # 没有具体服装，获取姿态下所有服装的动作
-                for clothing_list in pose_data.get("clothes", {}).values():
-                    actions.update(clothing_list)
-        elif pose_data.get("actions_source") == "global" and psd_info.get("global_actions"):
-            # 结构A：使用全局动作
-            actions.update(psd_info["global_actions"])
-        
-        actions = sorted(list(actions))
-        has_actions = len(actions) > 0
-        
-        self.ui.combo_action_select.blockSignals(True)
-        self.ui.combo_action_select.clear()
-        self.ui.label_action_select.setVisible(has_actions)
-        self.ui.combo_action_select.setVisible(has_actions)
-        
-        if has_actions:
-            self.ui.combo_action_select.addItems(actions)
-        self.ui.combo_action_select.blockSignals(False)
 
     def _restore_selection_if_available(self, combo_box, previous_value):
         """
@@ -636,7 +597,8 @@ class CharacterTabWidget(QWidget):
                 combo_box.setCurrentIndex(index)
             else:
                 # 如果不存在，自动选择第一项
-                combo_box.setCurrentIndex(0)
+                if combo_box.count() > 0:
+                    combo_box.setCurrentIndex(0)
         finally:
             combo_box.blockSignals(blocked)
 
