@@ -1,222 +1,128 @@
-backgrounds:
-  bg001:
-    name: 001
-    file: Background_001_001.png
-    variants: 
-      bg001_001:
-        name: 001
-        file: Background_001_001.png
-      bg001_002:
-        name: 002
-        file: Background_001_002.png
-  bg002:
-    name: 002
-    file: Background_002_001.png
-  bg003:
-    name: 003
-    file: Background_003_001.png
-    variants: 
-      bg003_001:
-        name: 001
-        file: Background_003_001.png
-      bg003_002:
-        name: 002
-        file: Background_003_002.png
-  bg004:
-    name: 004
-    file: Background_004_001.png
-  bg005:
-    name: 005
-    file: Background_005_001.png
-    variants: 
-      bg005_001:
-        name: 001
-        file: Background_005_001.png
-      bg005_002:
-        name: 002
-        file: Background_005_002.png
-  bg006:
-    name: 006
-    file: Background_006_001.png
-  bg007:
-    name: 007
-    file: Background_007_001.png
-    variants: 
-      bg007_001:
-        name: 夜晚
-        file: Background_007_001.png
-      bg007_002:
-        name: 白天
-        file: Background_007_002.png
-  bg009:
-    name: 009
-    file: Background_009_001.png
-    variants: 
-      bg009_001:
-        name: 白天
-        file: Background_009_001.png
-      bg009_002:
-        name: 夜晚
-        file: Background_009_002.png
-  bg010:
-    name: 010
-    file: Background_010_001.png
-  bg011:
-    name: 011
-    file: Background_011_001.png
-  bg012:
-    name: 012
-    file: Background_012_001.png
-  bg013:
-    name: 013
-    file: Background_013_001.png
-  bg014:
-    name: 014
-    file: Background_014_001.png
-  bg016:
-    name: 016
-    file: Background_016_001.png
-  bg017:
-    name: 017
-    file: Background_017_001.png
-    variants: 
-      bg017_001:
-        name: 白天
-        file: Background_017_001.png
-      bg017_002:
-        name: 夜晚
-        file: Background_017_002.png
-  bg018:
-    name: 018
-    file: Background_018_001.png
-  bg019:
-    name: 019
-    file: Background_019_001.png
-    variants: 
-      bg019_001:
-        name: 白天
-        file: Background_019_001.png
-      bg019_002:
-        name: 夜晚
-        file: Background_019_002.png
-  bg020:
-    name: 020
-    file: Background_020_001.png
-  bg021:
-    name: 021
-    file: Background_021_001.png
-  bg022:
-    name: 022
-    file: Background_022_001.png
-  bg023:
-    name: 023
-    file: Background_023_001.png
-    variants: 
-      bg023_001:
-        name: 001
-        file: Background_023_001.png
-      bg023_002:
-        name: 002
-        file: Background_023_002.png
-      bg023_003:
-        name: 003
-        file: Background_023_003.png
-      bg023_004:
-        name: 004
-        file: Background_023_004.png
-      bg023_005:
-        name: 005
-        file: Background_023_005.png
-      bg023_006:
-        name: 006
-        file: Background_023_006.png
-      bg023_007:
-        name: 007
-        file: Background_023_007.png
-      bg023_008:
-        name: 008
-        file: Background_023_008.png
-  bg024:
-    name: 024
-    file: Background_024_001.png
-    variants: 
-      bg024_001:
-        name: 001
-        file: Background_024_001.png
-      bg024_002:
-        name: 002
-        file: Background_024_002.png
-  bg025:
-    name: 025
-    file: Background_025_001.png
-    variants: 
-      bg025_001:
-        name: 001
-        file: Background_025_001.png
-      bg025_002:
-        name: 002
-        file: Background_025_002.png
-  bg026:
-    name: 026
-    file: Background_026_001.png
-  bg027:
-    name: 027
-    file: Background_027_001.png
-  bg028:
-    name: 028
-    file: Background_028_001.png
-    variants: 
-      bg028_001:
-        name: 白天
-        file: Background_028_001.png
-      bg028_002:
-        name: 夜晚
-        file: Background_028_002.png
-  bg029:
-    name: 029
-    file: Background_029_001.png
-    variants: 
-      bg029_001:
-        name: 白天
-        file: Background_029_001.png
-      bg029_002:
-        name: 夜晚
-        file: Background_029_002.png
-  bg030:
-    name: 030
-    file: Background_030_001.png
-    variants: 
-      bg030_001:
-        name: 001
-        file: Background_030_001.png
-      bg030_002:
-        name: 002
-        file: Background_030_002.png
-  bg031:
-    name: 031
-    file: Background_031_001.png
-    variants:
-      bg031_001:
-        name: 001
-        file: Background_031_001.png
-      bg031_002:
-        name: 002
-        file: Background_031_002.png
-      bg031_003:
-        name: 003
-        file: Background_031_003.png
-      bg031_004:
-        name: 004
-        file: Background_031_004.png
-      bg031_005:
-        name: 005
-        file: Background_031_005.png
-  bg032:
-    name: 032
-    file: Background_032_001.png
-  bg033:
-    name: 033
-    file: Background_033_001.png
-  bg034:
-    name: 034
-    file: Background_034_001.png
+bg01:
+  name: 甜美的家
+  file: 01 甜美的家.webp
+bg02:
+  name: 宿舍走廊
+  file: 02 宿舍走廊.webp
+bg03:
+  name: 牢房走廊
+  file: 03 牢房走廊.webp
+bg04:
+  name: 房间转角
+  file: 04 房间转角.webp
+bg05:
+  name: 会客大厅
+  file: 05 会客大厅.webp
+bg06:
+  name: 烛光晚餐
+  file: 06 烛光晚餐.webp
+bg07:
+  name: 卧室
+  file: 07 夜晚卧室.webp
+  variants: 
+    bg07:
+      name: 夜晚
+      file: 07 夜晚卧室.webp
+    bg08:
+      name: 白天
+      file: 08 白天卧室.webp
+bg09:
+  name: 走廊
+  file: 09 白天走廊.webp
+  variants: 
+    bg09:
+      name: 白天
+      file: 09 白天走廊.webp
+    bg10:
+      name: 夜晚
+      file: 10 夜晚走廊.webp
+bg11:
+  name: 楼梯转角
+  file: 11 楼梯转角.webp
+bg12:
+  name: 多功能厅
+  file: 12 多功能厅.webp
+bg13:
+  name: 大图书馆
+  file: 13 大图书馆.webp
+bg14:
+  name: 原审启动
+  file: 14 原审启动.webp
+bg15:
+  name: 证人席位
+  file: 15 证人席位.webp
+bg16:
+  name: 蓝天绿草
+  file: 16 蓝天绿草.webp
+bg17:
+  name: 森林
+  file: 17 白天森林.webp
+  variants: 
+    bg17:
+      name: 白天
+      file: 17 白天森林.webp
+    bg18:
+      name: 夜晚
+      file: 18 夜晚森林.webp
+bg19:
+  name: 墙壁
+  file: 19 白天墙壁.webp
+bg20:
+  name: 洋馆
+  file: 20 白天洋馆.webp
+  variants: 
+    bg20:
+      name: 白天
+      file: 20 白天洋馆.webp
+    bg21:
+      name: 夜晚
+      file: 21 夜晚洋馆.webp
+bg22:
+  name: 小区
+  file: 22 白天小区.webp
+  variants: 
+    bg22:
+      name: 白天
+      file: 22 白天小区.webp
+    bg23:
+      name: 夜晚
+      file: 23 夜晚小区.webp
+bg24:
+  name: 木屋
+  file: 24 白天木屋.webp
+  variants: 
+    bg24:
+      name: 白天
+      file: 24 白天木屋.webp
+    bg25:
+      name: 夜晚
+      file: 25 夜晚木屋.webp
+bg26:
+  name: 仓库
+  file: 26 白天仓库.webp
+bg27:
+  name: 控制室吧
+  file: 27 控制室吧.webp
+bg28:
+  name: 花园
+  file: 28 白天花园.webp
+  variants: 
+    bg28:
+      name: 白天
+      file: 28 白天花园.webp
+    bg29:
+      name: 夜晚
+      file: 29 夜晚花园.webp
+bg30:
+  name: 艺术画廊
+  file: 30 艺术画廊.webp
+  variants: 
+    bg30:
+      name: 白天
+      file: 30 艺术画廊.webp
+    bg31:
+      name: 夜晚
+      file: 31 夜晚画廊.webp
+bg32:
+  name: 机械电梯
+  file: 32 机械电梯.webp

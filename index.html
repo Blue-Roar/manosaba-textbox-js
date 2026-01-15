@@ -214,7 +214,7 @@
                                     <div class="mb-3" id="configs_upload_div">
                                         <p>由于安全问题，浏览器不允许页面跨域读取文件。首次运行或脚本更新时请手动加载<code>config</code>目录下的相应配置文件。</p>
                                         <div class="d-flex align-items-center justify-content-between mb-2">
-                                            <label class="form-label mb-0">请上传配置文件<code>chara_meta.yml</code>、<code>text_configs.yml</code>、<code>backgrounds.yml</code>和<code>fonts.yml</code>：</label>
+                                            <label class="form-label mb-0">请上传配置文件<code>chara_meta.yml</code>、<code>backgrounds.yml</code>和<code>fonts.yml</code>：</label>
                                             <button class="btn btn-sm" onclick="resetConfigs()">重置</button>
                                         </div>
                                         <input type="file" name="configs" class="form-control form-control-lg" accept=".yml,application/yaml" multiple/>
@@ -226,13 +226,6 @@
                                                 <label class="form-label" id="chara_meta-indicator"><span class="text-danger">未加载</span></label>
                                             </div>
                                             <textarea class="form-control font-monospace" id="chara_meta" rows="20" readonly style="resize:none;"></textarea>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <label class="form-label">文本配置 <code>text_configs.yml</code></label>
-                                                <label class="form-label" id="text_configs-indicator"><span class="text-danger">未加载</span></label>
-                                            </div>
-                                            <textarea class="form-control font-monospace" id="text_configs" rows="20" readonly style="resize:none;"></textarea>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="d-flex align-items-center justify-content-between">

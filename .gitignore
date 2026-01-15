@@ -7,6 +7,7 @@ utils/__pycache__/
 /assets/emoji
 /config/keymap.yml
 /config/process_whitelist.yml
+/config/version.yml
 /config/textual.tcss
 .DS_Store
 *.py

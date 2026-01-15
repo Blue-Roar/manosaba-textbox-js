@@ -1,7 +1,0 @@
-<Solution>
-  <Configurations>
-    <Platform Name="x64" />
-    <Platform Name="x86" />
-  </Configurations>
-  <Project Path="Image_Processor.vcxproj" Id="bad29c26-2e18-40ed-86a5-68f6e0b53507" />
-</Solution>

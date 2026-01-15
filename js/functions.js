@@ -11,16 +11,15 @@ const TEXT_OVER = [2339,800];  // 文本范围右下角位置
 const SHADOW_OFFSET = [2, 2]; // 阴影偏移量
 const SHADOW_COLOR = [0, 0, 0]; // 黑色阴影
 const OPTION_DEFAULTS = {
-    "background": "bg001",
-    "chara": "sherri",
+    "background": "bg01",
+    "chara": "sherry",
     "font": "default",
     "stretch_image": "zoom_x"
 };
 
 // 角色配置字典
-var mahoshojo = {};
+var characters = {};
 // 角色文字配置字典
-var text_configs = {};
 var backgrounds = {};
 var fonts = {};
 var local_fonts = {};
@@ -39,7 +38,7 @@ function initBackgrounds() {
             <label class="form-imagecheck mb-2">
                 <input name="background" type="radio" value="${key}" class="form-imagecheck-input" onchange="updateCanvas()" onclick="updateCanvas()"${key==OPTION_DEFAULTS.background ? " checked" : ""}/>
                 <span class="form-imagecheck-figure" title="${value.name}" data-bs-toggle="tooltip">
-                    <img class="form-imagecheck-image" src="./assets/backgrounds/${value.file}"/>
+                    <img class="form-imagecheck-image" src="./assets/background/${value.file}"/>
                 </span>
             </label>
         </div>
@@ -52,7 +51,7 @@ function initBackgrounds() {
                     <label class="form-imagecheck mb-2">
                         <input name="background-variant" type="radio" value="${key2}" class="form-imagecheck-input" onchange="updateCanvas()" onclick="updateCanvas()"/>
                         <span class="form-imagecheck-figure" title="${value2.name}" data-bs-toggle="tooltip">
-                            <img class="form-imagecheck-image" src="./assets/backgrounds/${value2.file}"/>
+                            <img class="form-imagecheck-image" src="./assets/background/${value2.file}"/>
                         </span>
                     </label>
                 </div>
@@ -78,13 +77,13 @@ function initCharacters() {
     // 渲染角色选择
     let characters_div = $("#characters_div");
     characters_div.empty();
-    for (const [key, value] of Object.entries(mahoshojo)) {
+    for (const [key, value] of Object.entries(characters)) {
         let char_html = `
         <div class="col-auto">
             <label class="form-imagecheck mb-2">
                 <input name="character" type="radio" value="${key}" class="form-imagecheck-input" onchange="initEmotions('${key}');updateCanvas()" onclick="initEmotions('${key}');updateCanvas()"${key==OPTION_DEFAULTS.chara ? " checked" : ""}/>
                 <span class="form-imagecheck-figure" title="${value.full_name}" data-bs-toggle="tooltip">
-                    <span class="avatar avatar-xl" style="background-image: url('./assets/chara/${key}/${key} (1).png')"></span>
+                    <img class="form-imagecheck-image" height="112" src="./assets/chara/${key}/${key} (1).webp"/>
                 </span>
             </label>
         </div>
@@ -96,13 +95,13 @@ function initEmotions(character) {
     // 渲染表情选择
     let emotions_div = $("#emotions_div");
     emotions_div.empty();
-    for (i=1; i<mahoshojo[character].emotion_count; i++) {
+    for (i=1; i<characters[character].emotion_count; i++) {
         let emotion_html = `
         <div class="col-auto">
             <label class="form-imagecheck mb-2">
                 <input name="emotion" type="radio" value="${i}" class="form-imagecheck-input" onchange="updateCanvas()" onclick="updateCanvas()"/>
                 <span class="form-imagecheck-figure">
-                    <img class="form-imagecheck-image" height="112" src="./assets/chara/${character}/${character} (${i}).png"/>
+                    <img class="form-imagecheck-image" height="112" src="./assets/chara/${character}/${character} (${i}).webp"/>
                 </span>
             </label>
         </div>
@@ -307,8 +306,8 @@ function updateCanvas() {
     let character = $('input[name="character"]:checked').val();
     if (character) {
         if ($('input[name="emotion"]:checked')) ctx.drawImage($('input[name="emotion"]:checked').next().children()[0], 0, 134);
-        for (const [key, value] of Object.entries(text_configs[character])) {
-            ctx.font = `${value.font_size}px ${mahoshojo[character].font}`;
+        for (const [key, value] of Object.entries(characters[character].text)) {
+            ctx.font = `${value.font_size}px ${characters[character].font}`;
 
             ctx.fillStyle = `rgb(${SHADOW_COLOR[0]}, ${SHADOW_COLOR[1]}, ${SHADOW_COLOR[2]})`;
             ctx.fillText(value.text, value.position[0] + SHADOW_OFFSET[0], value.font_size + value.position[1] + SHADOW_OFFSET[1]);
@@ -416,7 +415,7 @@ function updateCanvas() {
                         isHighlight = true;
                     }
                     if (isHighlight) {
-                        ctx.fillStyle = `rgb(${text_configs[character][0]['font_color'][0]},${text_configs[character][0]['font_color'][1]},${text_configs[character][0]['font_color'][2]})`
+                        ctx.fillStyle = `rgb(${characters[character].text[0]['font_color'][0]},${characters[character].text[0]['font_color'][1]},${characters[character].text[0]['font_color'][2]})`
                         ctx.fillText(part, currentX, y); // 绘制高亮显示的文本
                         currentX += ctx.measureText(part).width; // 更新当前X坐标
                     } else {
@@ -436,20 +435,14 @@ function downloadImage() {
         saveAs(blob, `魔裁文本框表情-${Date.now()}.png`);
     });
 }
-function checkConfigs(direct=false, chara_meta_yaml="", text_configs_yaml="", backgrounds_yaml="", fonts_yaml="") {
+function checkConfigs(direct=false, chara_meta_yaml="", backgrounds_yaml="", fonts_yaml="") {
     if (direct) {
-        if (chara_meta_yaml == "" || text_configs_yaml == "" || backgrounds_yaml == "" || fonts_yaml == "") {
+        if (chara_meta_yaml == "" || backgrounds_yaml == "" || fonts_yaml == "") {
             $.when(
                 $.get("./config/chara_meta.yml", function(data) {
                     chara_meta_yaml = data;
                 }).fail(function(e) {
                     console.warn("读取 chara_meta.yml 失败：", e);
-                    checkConfigs(false);
-                }),
-                $.get("./config/text_configs.yml", function(data) {
-                    text_configs_yaml = data;
-                }).fail(function(e) {
-                    console.warn("读取 text_configs.yml 失败：", e);
                     checkConfigs(false);
                 }),
                 $.get("./config/backgrounds.yml", function(data) {
@@ -465,41 +458,44 @@ function checkConfigs(direct=false, chara_meta_yaml="", text_configs_yaml="", ba
                     checkConfigs(false);
                 })
             ).done(function() {
-                if (chara_meta_yaml == "" || text_configs_yaml == "" || backgrounds_yaml == "" || fonts_yaml == "") {
+                if (chara_meta_yaml == "" || backgrounds_yaml == "" || fonts_yaml == "") {
                     console.info("未能通过 YAML 直读加载配置，尝试从本地存储加载。");
                     checkConfigs(false);
                 } else {
-                    checkConfigs(true, chara_meta_yaml, text_configs_yaml, backgrounds_yaml, fonts_yaml);
+                    checkConfigs(true, chara_meta_yaml, backgrounds_yaml, fonts_yaml);
                 }
             });
         }
     } else {
         chara_meta_yaml = localStorage.getItem("manosaba_chara_meta") ?? "";
-        text_configs_yaml = localStorage.getItem("manosaba_text_configs") ?? "";
         backgrounds_yaml = localStorage.getItem("manosaba_backgrounds") ?? "";
         fonts_yaml = localStorage.getItem("manosaba_fonts") ?? "";
     }
 
-    mahoshojo = chara_meta_yaml ? jsyaml.load(chara_meta_yaml)['mahoshojo'] : {};
-    text_configs = text_configs_yaml ? jsyaml.load(text_configs_yaml)['text_configs'] : {};
-    backgrounds = backgrounds_yaml ? jsyaml.load(backgrounds_yaml)['backgrounds'] : {};
-    fonts = fonts_yaml ? jsyaml.load(fonts_yaml)['fonts'] : {};
+    characters = chara_meta_yaml ? jsyaml.load(chara_meta_yaml) : {};
+    for (const [key, value] of Object.entries(characters)) {
+        if (value.emotion_count === undefined || value.emotion_count == 0) { // 不支持PSD格式，移除整个角色配置
+            delete characters[key];
+        }
+        for (const [text_key, text_value] of Object.entries(value.text)) {
+            text_value.position = [759, 63];
+            if (text_value.font_color === undefined) {
+                text_value.font_color = [255, 255, 255];
+            }
+        }
+    }
+    backgrounds = backgrounds_yaml ? jsyaml.load(backgrounds_yaml) : {};
+    fonts = fonts_yaml ? jsyaml.load(fonts_yaml) : {};
     $('#chara_meta').val(chara_meta_yaml);
-    $('#text_configs').val(text_configs_yaml);
     $('#backgrounds').val(backgrounds_yaml);
     $('#fonts').val(fonts_yaml);
-    if (Object.keys(mahoshojo).length > 0) {
-        for (const [key, value] of Object.entries(mahoshojo)) {
+    if (Object.keys(characters).length > 0) {
+        for (const [key, value] of Object.entries(characters)) {
             value.font = value.font.replace(".ttf", "");
         }
-        $('#chara_meta-indicator').html(`<span class="text-success">已加载 ${Object.keys(mahoshojo).length} 条${direct ? "（YAML 直读）" : ""}</span>`);
+        $('#chara_meta-indicator').html(`<span class="text-success">已加载 ${Object.keys(characters).length} 条${direct ? "（YAML 直读）" : ""}</span>`);
     } else {
         $('#chara_meta-indicator').html('<span class="text-danger">未加载</span>');
-    }
-    if (Object.keys(text_configs).length > 0) {
-        $('#text_configs-indicator').html(`<span class="text-success">已加载 ${Object.keys(text_configs).length} 条${direct ? "（YAML 直读）" : ""}</span>`);
-    } else {
-        $('#text_configs-indicator').html('<span class="text-danger">未加载</span>');
     }
     if (Object.keys(backgrounds).length > 0) {
         $('#backgrounds-indicator').html(`<span class="text-success">已加载 ${Object.keys(backgrounds).length} 条${direct ? "（YAML 直读）" : ""}</span>`);
@@ -513,7 +509,7 @@ function checkConfigs(direct=false, chara_meta_yaml="", text_configs_yaml="", ba
     }
     
     $('ul.nav.nav-tabs.card-header-tabs li, ul.nav.nav-tabs.card-header-tabs li > a').removeClass("active");
-    if (Object.keys(mahoshojo).length > 0 && Object.keys(text_configs).length > 0) {
+    if (Object.keys(characters).length > 0) {
         initBackgrounds();
         initCharacters();
         initEmotions(OPTION_DEFAULTS.chara);
@@ -538,7 +534,6 @@ function checkConfigs(direct=false, chara_meta_yaml="", text_configs_yaml="", ba
 }
 function resetConfigs() {
     localStorage.removeItem("manosaba_chara_meta");
-    localStorage.removeItem("manosaba_text_configs");
     localStorage.removeItem("manosaba_backgrounds");
     localStorage.removeItem("manosaba_fonts");
     checkConfigs();
@@ -560,9 +555,6 @@ $(document).ready(function() {
                     if (file.name === "chara_meta.yml") {
                         $('#chara_meta').val(content);
                         localStorage.setItem("manosaba_chara_meta", content);
-                    } else if (file.name === "text_configs.yml") {
-                        $('#text_configs').val(content);
-                        localStorage.setItem("manosaba_text_configs", content);
                     } else if (file.name === "backgrounds.yml") {
                         $('#backgrounds').val(content);
                         localStorage.setItem("manosaba_backgrounds", content);
