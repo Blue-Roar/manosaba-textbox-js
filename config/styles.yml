@@ -171,7 +171,7 @@ default:
   use_character_color: true
 思索:
   aspect_ratio: '5:4'
-  font_family: font2
+  font_family: font3
   font_size: 80
   image_components:
   - align: bottom-right
@@ -250,7 +250,7 @@ default:
     type: extra
   - align: middle-center
     enabled: true
-    font_family: font2
+    font_family: font3
     font_size: 60
     layer: 9
     max_width: 500
