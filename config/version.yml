@@ -6,6 +6,11 @@ version: "2.2.8"
 
 # 版本历史 记录的是exe的更新，并非代码的更新记录
 history:
+  - version: "2.2.9"
+    date: "2026-1-15"
+    description:
+      - "修复了表情初始化错误的bug"
+      - "调整了菜单按键的样式"
   - version: "2.2.8"
     date: "2026-1-14"
     description:

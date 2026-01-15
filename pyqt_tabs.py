@@ -435,10 +435,8 @@ class CharacterTabWidget(QWidget):
                 self.ui.combo_emotion_select.addItems(emotions)
                 # 恢复之前的选择
                 saved_emotion = self._component_config.get("emotion_index", "")
-                if isinstance(saved_emotion, str) and saved_emotion in emotions:
-                    self.ui.combo_emotion_select.setCurrentText(saved_emotion)
-                else:
-                    self.ui.combo_emotion_select.setCurrentIndex(0)
+                if saved_emotion <= len(emotions):
+                    self.ui.combo_emotion_select.setCurrentIndex(saved_emotion-1)
             else:
                 self.ui.combo_emotion_select.addItem("无可用表情")
             
