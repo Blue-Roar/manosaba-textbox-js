@@ -84,7 +84,7 @@ function initCharacters() {
             <label class="form-imagecheck mb-2">
                 <input name="character" type="radio" value="${key}" class="form-imagecheck-input" onchange="initEmotions('${key}');updateCanvas()" onclick="initEmotions('${key}');updateCanvas()"${key==OPTION_DEFAULTS.chara ? " checked" : ""}/>
                 <span class="form-imagecheck-figure" title="${value.full_name}" data-bs-toggle="tooltip">
-                    <span class="avatar avatar-xl" style="background-image: url('./assets/chara/${key}/${key} (1).png')"></span>
+                    <span class="avatar avatar-xl" style="background-image: url('./assets/chara/${key}/${key} (1).webp')"></span>
                 </span>
             </label>
         </div>
@@ -102,7 +102,7 @@ function initEmotions(character) {
             <label class="form-imagecheck mb-2">
                 <input name="emotion" type="radio" value="${i}" class="form-imagecheck-input" onchange="updateCanvas()" onclick="updateCanvas()"/>
                 <span class="form-imagecheck-figure">
-                    <img class="form-imagecheck-image" height="112" src="./assets/chara/${character}/${character} (${i}).png"/>
+                    <img class="form-imagecheck-image" height="112" src="./assets/chara/${character}/${character} (${i}).webp"/>
                 </span>
             </label>
         </div>
@@ -433,7 +433,7 @@ function updateCanvas() {
 function downloadImage() {
     let canvas = $('#canvas')[0];
     canvas.toBlob(function(blob) {
-        saveAs(blob, `魔裁文本框表情-${Date.now()}.png`);
+        saveAs(blob, `魔裁文本框表情-${Date.now()}.webp`);
     });
 }
 function checkConfigs(direct=false, chara_meta_yaml="", text_configs_yaml="", backgrounds_yaml="", fonts_yaml="") {

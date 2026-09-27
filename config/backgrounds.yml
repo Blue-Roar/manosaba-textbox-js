@@ -1,222 +1,222 @@
 backgrounds:
   bg001:
     name: 001
-    file: Background_001_001.png
+    file: Background_001_001.webp
     variants: 
       bg001_001:
         name: 001
-        file: Background_001_001.png
+        file: Background_001_001.webp
       bg001_002:
         name: 002
-        file: Background_001_002.png
+        file: Background_001_002.webp
   bg002:
     name: 002
-    file: Background_002_001.png
+    file: Background_002_001.webp
   bg003:
     name: 003
-    file: Background_003_001.png
+    file: Background_003_001.webp
     variants: 
       bg003_001:
         name: 001
-        file: Background_003_001.png
+        file: Background_003_001.webp
       bg003_002:
         name: 002
-        file: Background_003_002.png
+        file: Background_003_002.webp
   bg004:
     name: 004
-    file: Background_004_001.png
+    file: Background_004_001.webp
   bg005:
     name: 005
-    file: Background_005_001.png
+    file: Background_005_001.webp
     variants: 
       bg005_001:
         name: 001
-        file: Background_005_001.png
+        file: Background_005_001.webp
       bg005_002:
         name: 002
-        file: Background_005_002.png
+        file: Background_005_002.webp
   bg006:
     name: 006
-    file: Background_006_001.png
+    file: Background_006_001.webp
   bg007:
     name: 007
-    file: Background_007_001.png
+    file: Background_007_001.webp
     variants: 
       bg007_001:
         name: 夜晚
-        file: Background_007_001.png
+        file: Background_007_001.webp
       bg007_002:
         name: 白天
-        file: Background_007_002.png
+        file: Background_007_002.webp
   bg009:
     name: 009
-    file: Background_009_001.png
+    file: Background_009_001.webp
     variants: 
       bg009_001:
         name: 白天
-        file: Background_009_001.png
+        file: Background_009_001.webp
       bg009_002:
         name: 夜晚
-        file: Background_009_002.png
+        file: Background_009_002.webp
   bg010:
     name: 010
-    file: Background_010_001.png
+    file: Background_010_001.webp
   bg011:
     name: 011
-    file: Background_011_001.png
+    file: Background_011_001.webp
   bg012:
     name: 012
-    file: Background_012_001.png
+    file: Background_012_001.webp
   bg013:
     name: 013
-    file: Background_013_001.png
+    file: Background_013_001.webp
   bg014:
     name: 014
-    file: Background_014_001.png
+    file: Background_014_001.webp
   bg016:
     name: 016
-    file: Background_016_001.png
+    file: Background_016_001.webp
   bg017:
     name: 017
-    file: Background_017_001.png
+    file: Background_017_001.webp
     variants: 
       bg017_001:
         name: 白天
-        file: Background_017_001.png
+        file: Background_017_001.webp
       bg017_002:
         name: 夜晚
-        file: Background_017_002.png
+        file: Background_017_002.webp
   bg018:
     name: 018
-    file: Background_018_001.png
+    file: Background_018_001.webp
   bg019:
     name: 019
-    file: Background_019_001.png
+    file: Background_019_001.webp
     variants: 
       bg019_001:
         name: 白天
-        file: Background_019_001.png
+        file: Background_019_001.webp
       bg019_002:
         name: 夜晚
-        file: Background_019_002.png
+        file: Background_019_002.webp
   bg020:
     name: 020
-    file: Background_020_001.png
+    file: Background_020_001.webp
   bg021:
     name: 021
-    file: Background_021_001.png
+    file: Background_021_001.webp
   bg022:
     name: 022
-    file: Background_022_001.png
+    file: Background_022_001.webp
   bg023:
     name: 023
-    file: Background_023_001.png
+    file: Background_023_001.webp
     variants: 
       bg023_001:
         name: 001
-        file: Background_023_001.png
+        file: Background_023_001.webp
       bg023_002:
         name: 002
-        file: Background_023_002.png
+        file: Background_023_002.webp
       bg023_003:
         name: 003
-        file: Background_023_003.png
+        file: Background_023_003.webp
       bg023_004:
         name: 004
-        file: Background_023_004.png
+        file: Background_023_004.webp
       bg023_005:
         name: 005
-        file: Background_023_005.png
+        file: Background_023_005.webp
       bg023_006:
         name: 006
-        file: Background_023_006.png
+        file: Background_023_006.webp
       bg023_007:
         name: 007
-        file: Background_023_007.png
+        file: Background_023_007.webp
       bg023_008:
         name: 008
-        file: Background_023_008.png
+        file: Background_023_008.webp
   bg024:
     name: 024
-    file: Background_024_001.png
+    file: Background_024_001.webp
     variants: 
       bg024_001:
         name: 001
-        file: Background_024_001.png
+        file: Background_024_001.webp
       bg024_002:
         name: 002
-        file: Background_024_002.png
+        file: Background_024_002.webp
   bg025:
     name: 025
-    file: Background_025_001.png
+    file: Background_025_001.webp
     variants: 
       bg025_001:
         name: 001
-        file: Background_025_001.png
+        file: Background_025_001.webp
       bg025_002:
         name: 002
-        file: Background_025_002.png
+        file: Background_025_002.webp
   bg026:
     name: 026
-    file: Background_026_001.png
+    file: Background_026_001.webp
   bg027:
     name: 027
-    file: Background_027_001.png
+    file: Background_027_001.webp
   bg028:
     name: 028
-    file: Background_028_001.png
+    file: Background_028_001.webp
     variants: 
       bg028_001:
         name: 白天
-        file: Background_028_001.png
+        file: Background_028_001.webp
       bg028_002:
         name: 夜晚
-        file: Background_028_002.png
+        file: Background_028_002.webp
   bg029:
     name: 029
-    file: Background_029_001.png
+    file: Background_029_001.webp
     variants: 
       bg029_001:
         name: 白天
-        file: Background_029_001.png
+        file: Background_029_001.webp
       bg029_002:
         name: 夜晚
-        file: Background_029_002.png
+        file: Background_029_002.webp
   bg030:
     name: 030
-    file: Background_030_001.png
+    file: Background_030_001.webp
     variants: 
       bg030_001:
         name: 001
-        file: Background_030_001.png
+        file: Background_030_001.webp
       bg030_002:
         name: 002
-        file: Background_030_002.png
+        file: Background_030_002.webp
   bg031:
     name: 031
-    file: Background_031_001.png
+    file: Background_031_001.webp
     variants:
       bg031_001:
         name: 001
-        file: Background_031_001.png
+        file: Background_031_001.webp
       bg031_002:
         name: 002
-        file: Background_031_002.png
+        file: Background_031_002.webp
       bg031_003:
         name: 003
-        file: Background_031_003.png
+        file: Background_031_003.webp
       bg031_004:
         name: 004
-        file: Background_031_004.png
+        file: Background_031_004.webp
       bg031_005:
         name: 005
-        file: Background_031_005.png
+        file: Background_031_005.webp
   bg032:
     name: 032
-    file: Background_032_001.png
+    file: Background_032_001.webp
   bg033:
     name: 033
-    file: Background_033_001.png
+    file: Background_033_001.webp
   bg034:
     name: 034
-    file: Background_034_001.png
+    file: Background_034_001.webp

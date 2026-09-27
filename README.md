@@ -4,7 +4,8 @@
 
 此分支是[主分支Python脚本](https://github.com/oplivilqo/manosaba_text_box)的使用浏览器JavaScript实现、无需Python环境的版本，可能更适合偶尔生成图片的用户。
 
-JavaScript版与Python版共用相同的角色素材与相关配置文件（`chara_meta.yml`、`text_configs.yml`）。如有需要可以将Python脚本覆盖在此目录上，二者可共存，不会相互干扰。
+JavaScript版与Python版共用相同的角色素材与相关配置文件（`chara_meta.yml`、`text_configs.yml`）。~~如有需要可以将Python脚本覆盖在此目录上，二者可共存，不会相互干扰。~~
+> 由于主分支各种更新的破坏性改动，已经不再支持新版本素材与配置文件。
 
 ![界面截图](https://github.com/user-attachments/assets/38d0e142-8707-4f43-b1a8-1bb0bcdbe848)
 
@@ -14,7 +15,7 @@ JavaScript版与Python版共用相同的角色素材与相关配置文件（`cha
 
 ~~都有GUI了应该不用再多说什么了吧……~~
 
-### 添加自定义角色（同主分支Python版本）
+### 添加自定义角色 ~~（同主分支Python版本）~~
 ***
 #### 第1步
 请下载需要的角色图片，放置于`<根目录>/assets/chara/<角色名>`文件夹中，
